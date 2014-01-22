@@ -1,11 +1,8 @@
-#include <stdlib.h>
-#include <stdio.h>
-
-
-
-
 #include "DBBuilder.h"
 #include "DBOperations.h"
+
+#include <stdlib.h>
+#include <stdio.h>
 
 #define DEFAULT_VALUE_FOR_INT -1
 #define ORIGIN_SQLITE_NAME "test.db"

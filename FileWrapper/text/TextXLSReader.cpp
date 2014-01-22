@@ -1,6 +1,7 @@
 #include "TextXLSReader.h"
 
 //#include <iostream>
+<<<<<<< HEAD
 #include <stdlib.h>
 #include <fstream>
 
@@ -8,6 +9,10 @@
 #define TAB   '	'
 #define INTERNAL_MAX 900
 
+=======
+#include <fstream>
+
+>>>>>>> bab1e3323dcef76c10153cdcfa7224d8dac176b2
 //FIXME: Add this to fix the linker Error: no definition of `__dso_handle'
 #ifndef TEST
 extern "C"
