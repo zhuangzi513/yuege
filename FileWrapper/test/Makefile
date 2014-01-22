@@ -25,4 +25,4 @@ $(OBJS):%.o:%.cpp
 	$(CC) -c $< -o $@ $(LD_FLAG) $(CPP_FLAG)
 
 clean:
-	rm -f main.o $(TARGET)
+	rm -f $(OBJS) $(TARGET)
