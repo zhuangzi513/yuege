@@ -1,8 +1,11 @@
 #include "DBWrapper.h"
 #include "DBOperations.h"
+#include "ErrorDefines.h"
 
 #include <stdlib.h>
 #include <stdio.h>
+
+#define LOGTAG "DBWrapperSqlite3"
 
 #define DEFAULT_VALUE_FOR_INT -1
 #define ORIGIN_SQLITE_NAME "test.db"
@@ -23,21 +26,27 @@ DBWrapper::DBWrapper() {
 DBWrapper::~DBWrapper() {
 }
 
-bool DBWrapper::createDB(const std::string& DBName, sqlite3** ppDB) {
+bool DBWrapper::openDB(const std::string& DBName, sqlite3** ppDB) {
     int ret = DEFAULT_VALUE_FOR_INT;
     ret = sqlite3_open(DBName.c_str(), ppDB);
-    printf("ret:%d\n", ret);
-    if (ret == SQLITE_OK) {
-        //FIXME: The map should not be DBName:DBName
-        printf("push key:%s db:%p\n", DBName.c_str(), *ppDB);
-        mDatabaseMap.insert(
-            std::map<std::string, sqlite3*>::value_type(DBName, *ppDB));
-        return true;
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to open Database with the name of %s\n", DBName.c_str());
+        return false;
     }
-    return false;
+
+    //FIXME: The map should not be DBName:DBName
+    mDatabaseMap.insert(
+        std::map<std::string, sqlite3*>::value_type(DBName, *ppDB));
+    return true;
 }
 
-bool DBWrapper::createTable(int32_t typeOfTable, std::string& DBName, std::string& tableName) {
+bool DBWrapper::closeDB(const std::string& DBName) {
+    sqlite3* targetDB = getDBByName(DBName);
+    sqlite3_close(targetDB);
+    return true;
+}
+
+bool DBWrapper::openTable(int32_t typeOfTable, std::string& DBName, std::string& tableName) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string tableFormat;
 
@@ -54,73 +63,45 @@ bool DBWrapper::createTable(int32_t typeOfTable, std::string& DBName, std::strin
       }
 
       default:
-        //LOG ERR
-        printf("Unknown table type\n");
+        LOGE(LOGTAG, "Unknown Table type :%d \n", typeOfTable);
         return false;
     }
 
     sqlite3* targetDB = getDBByName(DBName);
-    if (!targetDB && !createDB(DBName, &targetDB)) {
-        printf("Fail to get DB:%s\n", DBName.c_str());
+    std::string sql(CREATE_TABLE + tableName + tableFormat);
+
+    if (!targetDB && !openDB(DBName, &targetDB)) {
+        LOGE(LOGTAG, "Fail to get Database with name %s\n", DBName.c_str());
+        LOGE(LOGTAG, "And fail to open a new Database with name %s either\n", DBName.c_str());
         return false;
     }
 
-    //{
-    //   //FIXME: dbInfo is DBName for now
-    //   std::string dbInfo = getDBByName(DBName);
-
-    //   if (dbInfo.empty() && !createDB(DBName, &targetDB)) {
-    //       printf("Fail to get DB:%s\n", DBName.c_str());
-    //       return false;
-    //   }
-    //   if (SQLITE_OK != sqlite3_open(dbInfo.c_str(), &targetDB)) {
-    //       return false;
-    //   }
-    //}
-
-    std::string sql(CREATE_TABLE + tableName + tableFormat);
-    printf("sql:%s\n", sql.c_str());
     ret = sqlite3_exec(targetDB, sql.c_str(), NULL, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
         std::string error(sqlERR);
         if (error.find("already exists")) {
-            printf("Table:%s exists in DB:%s\n", tableName.c_str(), DBName.c_str());
-            printf("DB Error :%s\n", error.c_str());
-            //sqlite3_close(targetDB);
+            LOGD(LOGTAG, "%s\n", sqlERR);
+            LOGD(LOGTAG, "There is already a Table with name %s\n", tableName.c_str());
             return true;
         }
-        printf("Fail to create Table:%s DB:%s\n", tableName.c_str(), DBName.c_str());
-        //sqlite3_close(targetDB);
+
+        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGE(LOGTAG, "Fail to open the table with name %s\n", tableName.c_str());
         return false;
     }
-    //sqlite3_close(targetDB);
 
     return true;
 }
 
 bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
-    std::string sql("");
-    sqlite3* targetDB = NULL;
-    //{
-    //    std::string dbInfo = getDBByName(DBName);
+    std::string sql = INSERT_OP + tableName + KeyAndValues;
+    sqlite3* targetDB = getDBByName(DBName);
 
-    //    if (SQLITE_OK != sqlite3_open(dbInfo.c_str(), &targetDB)) {
-    //        printf("open DB:%s fail \n", dbInfo.c_str());
-    //        return false;
-    //    }
-
-    //    if (targetDB == NULL) {
-    //        return false;
-    //    }
-    //}
-
-    sql = INSERT_OP + tableName + KeyAndValues;
-    targetDB = getDBByName(DBName);
-    //printf("targetDB:%p, sql:%s\n", targetDB, sql.c_str());
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
-        printf("sqlErr:%s\n", sqlERR);
+        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGD(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
 
@@ -129,24 +110,13 @@ bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::
 
 bool DBWrapper::deleteElement(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
-    std::string sql("");
-    sqlite3* targetDB = NULL;
-    //{
-    //    std::string dbInfo = getDBByName(DBName);
+    std::string sql = DELETE_OP + tableName + condition;
+    sqlite3* targetDB = getDBByName(DBName);
 
-    //    if (SQLITE_OK != sqlite3_open(dbInfo.c_str(), &targetDB)) {
-    //        return false;
-    //    }
-
-    //    if (targetDB == NULL) {
-    //        return false;
-    //    }
-    //}
- 
-    targetDB = getDBByName(DBName);
-    sql = DELETE_OP + tableName + condition;
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
+        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGD(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
  
@@ -159,36 +129,19 @@ bool DBWrapper::updateElement(std::string& DBName, std::string& tableName, std::
 
 bool DBWrapper::joinTables(std::string& DBName, std::string& srcTableName, std::string& targetTableName, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
-    std::string sql("");
-    sqlite3* targetDB = NULL;
-    //{
-    //    std::string dbInfo = getDBByName(DBName);
-
-    //    if (SQLITE_OK != sqlite3_open(dbInfo.c_str(), &targetDB)) {
-    //        return false;
-    //    }
-
-    //    if (targetDB == NULL) {
-    //        return false;
-    //    }
-    //}
-    targetDB = getDBByName(DBName);
+    std::string sql = "SELECT * INTO " + srcTableName + " FROM " + targetTableName;
+    sqlite3* targetDB = getDBByName(DBName);
 
     if (!DBWrapper::isTableExist(DBName, srcTableName) ||
         !DBWrapper::isTableExist(DBName, targetTableName)) {
-        printf("Table doesn't exist\n");
+        LOGE(LOGTAG, "There is no table named %s or %s in Database %s\n", srcTableName.c_str(), targetTableName.c_str(), DBName.c_str());
         return false;
     }
 
-    //sql = "SELECT * FROM " + srcTableName + " INNER JOIN " + targetTableName + " ON " + srcTableName + ".StockID == " + targetTableName + ".StockID";
-    //printf("sql:%s\n", sql.c_str());
-    //ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
-
-    sql = "SELECT * INTO " + srcTableName + " FROM " + targetTableName;
-    printf("sql:%s\n", sql.c_str());
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
-        printf("sqlERR:%s\n", sqlERR);
+        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGD(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
 
@@ -221,11 +174,9 @@ bool DBWrapper::updateRows(std::string& DBName, std::string& tableName, std::str
 
 
 //=======private
-sqlite3* DBWrapper::getDBByName(std::string& DBName) {
+sqlite3* DBWrapper::getDBByName(const std::string& DBName) {
     std::map<std::string, sqlite3*>::iterator itr = mDatabaseMap.find(DBName);
-    sqlite3* ret = itr->second;
-    //printf("DBName:%s, DB:%p\n", DBName.c_str(), ret);
-    return ret;
+    return itr->second;
 }
 
 bool DBWrapper::isTableExist(std::string& DBName, std::string& tableName) {

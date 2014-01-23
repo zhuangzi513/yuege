@@ -5,6 +5,10 @@
 
 #include <list>
 
+#define LOGTAG   "OriginDBHelper"
+#define SUFFIX_OF_DB_TYPE ".db"
+#define PREFIX_OF_TABLE   "Table"
+
 OriginDBHelper::OriginDBHelper() {
 }
 
@@ -28,7 +32,7 @@ bool OriginDBHelper::createOriginDBFromFile(const std::string& fileName) {
         return false;
     }
 
-    if (!FillDBWithDetailInfo(detailInfoList)) {
+    if (!initOriginDBWithDetailInfo(detailInfoList)) {
         printf("Fail to Fill Database:%s with the file:%s\n", mDBName.c_str(), fileName.c_str());
         return false;
     }
@@ -58,11 +62,9 @@ bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
          if (date[i] == '/')
              date[i] = '0';
     }
-    printf("mTableName:%s\n", date.c_str());
-    // Need to figure out how to generate the DBName and TableName from
-    // DBName = StockID && TableName = date ???
-    mDBName    = stockID + ".db";
-    mTableName = "test ";//date + " ";
+
+    mDBName    = stockID + SUFFIX_OF_DB_TYPE;
+    mTableName = PREFIX_OF_TABLE + date;
     return true;
 }
 
@@ -85,24 +87,25 @@ bool OriginDBHelper::insertElement(const XLSReader::XLSElement* detailInfo) {
     return DBWrapper::insertElement(mDBName, mTableName, insertDescription, NULL);
 }
 
-bool OriginDBHelper::FillDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList) {
+bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList) {
     // FIXME:Take care of the instance being released by other
     // thread. We may add a lock in the DBWrapper to handle the
-    if (!DBWrapper::createTable(DBWrapper::ORIGIN_TABLE, mDBName, mTableName)) {
+    if (!DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, mDBName, mTableName)) {
         return false;
     }
 
-    printf("createTable success\n");
-    std::list<XLSReader::XLSElement*>::iterator iterOfXLSElement;
     int32_t i = 0;
+    std::list<XLSReader::XLSElement*>::iterator iterOfXLSElement;
     for (iterOfXLSElement = detailInfoList.end(); iterOfXLSElement != detailInfoList.begin(); iterOfXLSElement--) {
          //FIXME: Maybe we should check whether the Inserting is success or not
-         printf("count:%d\n", ++i);
+         printf("1count:%d\n", ++i);
          if (!insertElement(*iterOfXLSElement)) {
-             printf("count:%d\n", ++i);
+             printf("2count:%d\n", i);
              return false;
          }
     }
+
+    DBWrapper::closeDB(mDBName);
 
     return true;
 }

@@ -20,7 +20,7 @@ class OriginDBHelper {
     bool getSpecsFromFileName(const std::string& fileName,
                               std::string& date, std::string& stockID);
     bool insertElement(const XLSReader::XLSElement* xlsElement);
-    bool FillDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList);
+    bool initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList);
 
   private:
     std::string mDBName;

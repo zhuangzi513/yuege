@@ -28,8 +28,9 @@ class DBWrapper {
     ~DBWrapper();
 
     static DBWrapper* getInstance();
-    static bool createTable(int32_t typeOfTable, std::string& DBName, std::string& tableName);
-    static bool createDB(const std::string& DBName, sqlite3** outDB);
+    static bool openTable(int32_t typeOfTable, std::string& DBName, std::string& tableName);
+    static bool openDB(const std::string& DBName, sqlite3** outDB);
+    static bool closeDB(const std::string& DBName);
 
     static bool insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback);
     static bool deleteElement(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback fCallback);
@@ -45,7 +46,7 @@ class DBWrapper {
     static bool updateRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
 
   private:
-    static sqlite3* getDBByName(std::string& DBName);
+    static sqlite3* getDBByName(const std::string& DBName);
     static bool isTableExist(std::string& DBName, std::string& tableName);
     static std::map<std::string, sqlite3*> mDatabaseMap;
 };

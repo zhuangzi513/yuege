@@ -17,6 +17,7 @@ CPP_FLAG:=\
     $(FILEWRAPPER_INCLUDE)   \
     -I/usr/include/          \
     -I../                    \
+    -I../../common           \
     -I../sqlite              \
     $(NULL)
 

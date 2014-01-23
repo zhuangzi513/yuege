@@ -17,6 +17,7 @@ CPP_FLAG := \
     -I$(LOCAL)/sqlite              \
     -I$(LOCAL)/../FileWrapper      \
     -I$(LOCAL)/../FileWrapper/text \
+    -I$(LOCAL)/../common           \
     $(NULL)
 
 BASIC_LD_FLAG := -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib -L/usr/lib64 -L/usr/lib/gcc/x86_64-linux-gnu/4.6/
