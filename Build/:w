@@ -46,13 +46,38 @@ bool DBWrapper::closeDB(const std::string& DBName) {
     return true;
 }
 
-bool DBWrapper::beginBatch(sqlite3* db) {
+bool DBWrapper::beginBatch(const sqlite3* db) {
     sqlite3_exec(db, "BEGIN TRANSACTION;", NULL, NULL, NULL);  
     return true;
 }
 
-bool DBWrapper::endBatch(sqlite3* db) {
+bool DBWrapper::endBatch(const sqlite3* db) {
     sqlite3_exec(db, "COMMIT TRANSACTION;", NULL, NULL, NULL);
+    return true;
+}
+
+bool DBWrapper::addExcStatement(const std::string& DBName, const std::string& tableName) {
+    sqlite3_stmt* stmt = NULL;
+    sqlite3* targetDB = getDBByName(DBName);
+    std::string sql = INSERT_OP + tableName + KeyAndValues;
+
+    int ret = sqlite3_prepare(targetDB,
+                              sql.c_str(),
+                              -1,
+                              &stmt,
+                              NULL);
+
+    if (ret != SQLITE_OK) {
+        //LOGE
+        return false;
+    }
+
+    if (sqlite3_step(stmt) != SQLITE_DONE){
+        //LOGE
+        return false;
+    }
+    sqlite3_reset(stmt);
+
     return true;
 }
 
@@ -122,37 +147,29 @@ bool DBWrapper::insertElementsInBatch(std::string& DBName, std::string& tableNam
     
     sqlite3_stmt* stmt = NULL;
     sqlite3* targetDB = getDBByName(DBName);
-    
-    // The first description is the format of values to insert
-    std::string format = (*values.begin());
-    std::string sql = INSERT_OP + tableName + format;
-    printf("DBWrapper: sql:%s, targetDB:%p\n", sql.c_str(), targetDB);
-    int ret = sqlite3_prepare(targetDB,
-                              sql.c_str(),
-                              -1,
-                              &stmt,
-                              NULL); 
+    std::string sql = INSERT_OP + tableName;
 
-    printf("DBWrapper:ret:%d\n", ret);
+    int ret = sqlite3_prepare(targetDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL); 
+
     if (ret != SQLITE_OK) {
-        printf("DBWrapper:ret:%d\n", ret);
         //LOGE
         return false;
     }
 
-    beginBatch(targetDB);
+    beginBatch();
     std::list<std::string>::iterator itrOfValues;
-    // FIXME:  begin --> end
-    for (itrOfValues = values.end(); itrOfValues != values.begin(); itrOfValues--) {
-         printf("DBWrapper insert:%s\n", (*itrOfValues).c_str());
+    for (itrOfValues = values.begin(); itrOfValues != values.end(); itrOfValues++) {
          if (sqlite3_step(stmt) != SQLITE_DONE){
              //LOGE
              return false;  
          }  
          sqlite3_reset(stmt);
     }
-    sqlite3_finalize(stmt);
-    endBatch(targetDB);
+    endBatch();
 
     return true;
 }

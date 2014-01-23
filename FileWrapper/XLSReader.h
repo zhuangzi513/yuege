@@ -17,14 +17,14 @@ class XLSReader {
         TURNOVER,
         SBFLAG
       };
-      void dump() { printf("mTime:%10s, mPrice:%10f, mFloat:%10f, mVolume:%10d, mTurnOver:%10f\n", mTime, mPrice, mFloat, mVolume, mTurnOver);};
-      int32_t mSB;
-      int32_t mDate;
-      int32_t mTime;
-      int32_t mVolume;
-      double mTurnOver;
-      double mPrice;
-      double mFloat;
+      void dump() { printf("mTime:%10s, mPrice:%10s, mFloat:%10s, mVolume:%10s, mTurnOver:%10s\n", mTime.c_str(), mPrice.c_str(), mFloat.c_str(), mVolume.c_str(), mTurnOver.c_str());};
+      std::string mSB;
+      std::string mDate;
+      std::string mTime;
+      std::string mVolume;
+      std::string mTurnOver;
+      std::string mPrice;
+      std::string mFloat;
     };
 };
 

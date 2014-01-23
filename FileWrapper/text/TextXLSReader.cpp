@@ -1,6 +1,7 @@
 #include "TextXLSReader.h"
 
-//#include <iostream>
+#include "ConstDefines.h"
+
 #include <stdlib.h>
 #include <fstream>
 
@@ -92,29 +93,34 @@ static bool parse(int32_t index, const std::string& srcString, XLSReader::XLSEle
     
     switch(index) {
       case XLSReader::XLSElement::TIME: {
+          outData.mTime = srcString;
           break;
       }
       case XLSReader::XLSElement::PRICE: {
-          double price = atof(srcString.c_str());
-          outData.mPrice = price;
+          outData.mPrice = srcString;
           break;
       }
       case XLSReader::XLSElement::FLOAT: {
-          double floatV = atof(srcString.c_str());
-          outData.mFloat = floatV;
+          outData.mFloat = srcString;
           break;
       }
       case XLSReader::XLSElement::VOLUME: {
-          int32_t volume = atof(srcString.c_str());
-          outData.mVolume = volume;
+          outData.mVolume = srcString;
           break;
       }
       case XLSReader::XLSElement::TURNOVER: {
-          double turnover = atof(srcString.c_str());
-          outData.mTurnOver = turnover;
+          outData.mTurnOver = srcString;
           break;
       }
       case XLSReader::XLSElement::SBFLAG: {
+          if (srcString == BUY_IN_CHINESE) {
+              outData.mSB = "true";
+          } else if (srcString == SAL_IN_CHINESE) {
+              outData.mSB = "false";
+          } else {
+              //LOG ERR
+              return false;
+          }
           break;
       }
       default:

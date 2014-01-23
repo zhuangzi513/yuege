@@ -1,3 +1,4 @@
+#include "DBOperations.h"
 #include "OriginDBHelper.h"
 
 #include "TextXLSReader.h"
@@ -71,17 +72,27 @@ bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
 bool OriginDBHelper::insertElement(const XLSReader::XLSElement* detailInfo) {
     std::string insertDescription;
     //TODO: generate the insertDescription for OriginDatabase
-    std::string time("Time");
-    std::string price("Price");
-    std::string floatV("Float");
-    std::string volume("Volume");
-    std::string turnover("TurnOver");
-    std::string saleBuy("SaleBuy");
 
-    char members[100] = {0};
-    char values[150]  = {0};
-    sprintf(members, "(%s, %s, %s, %s, %s, %s) ", time.c_str(), price.c_str(), floatV.c_str(), volume.c_str(), turnover.c_str(), saleBuy.c_str());
-    sprintf(values, "VALUES (%d, %f, %f, %d, %f, %d) ", ((int)(detailInfo->mTime)), ((double)(detailInfo->mPrice)), ((double)(detailInfo->mFloat)), ((int)(detailInfo->mVolume)), ((double)(detailInfo->mTurnOver)), ((int)(detailInfo->mSB)));
+    std::string members("");
+    std::string values("");
+
+    members += "(";
+    members += TABLE_FORMAT_ORIGIN;
+    members += ")";
+
+    values += "(";
+    values += detailInfo->mTime;
+    values += ",";
+    values += detailInfo->mPrice;
+    values += ",";
+    values += detailInfo->mFloat;
+    values += ",";
+    values += detailInfo->mVolume;
+    values += ",";
+    values += detailInfo->mTurnOver;
+    values += ",";
+    values += detailInfo->mSB;
+    values += ")";
 
     insertDescription = std::string(members) + std::string(values);
     return DBWrapper::insertElement(mDBName, mTableName, insertDescription, NULL);
@@ -94,16 +105,39 @@ bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*
         return false;
     }
 
-    int32_t i = 0;
+    std::string singleDes;
     std::list<XLSReader::XLSElement*>::iterator iterOfXLSElement;
-    for (iterOfXLSElement = detailInfoList.end(); iterOfXLSElement != detailInfoList.begin(); iterOfXLSElement--) {
-         //FIXME: Maybe we should check whether the Inserting is success or not
-         printf("1count:%d\n", ++i);
-         if (!insertElement(*iterOfXLSElement)) {
-             printf("2count:%d\n", i);
-             return false;
-         }
+    std::list<std::string> descriptions;
+
+    // First of all, define the format of values to insert
+    // (Time, Price, Float, Volume, TurnOver, SaleBuy)
+    // VALUES (?, ?, ?, ?, ?, ?) or
+    // VALUES (:Time, :Price, :Float, :Volume, :TurnOver, :SaleBuy)
+    singleDes = TABLE_FORMAT_ORIGIN;
+    singleDes += D_STMT_FORMAT_ORGIN;
+    descriptions.push_back(singleDes);
+
+    // And then, push the make the values into descriptions to be stepped.
+    // FIXME: maybe we should define all the members of XLSReader::XLSElement
+    // of std::string
+    for (iterOfXLSElement = detailInfoList.begin(); iterOfXLSElement != detailInfoList.end(); iterOfXLSElement++) {
+         std::string values("");
+         values += "(";
+         values += (*iterOfXLSElement)->mTime;
+         values += ", ";
+         values += (*iterOfXLSElement)->mPrice;
+         values += ", ";
+         values += (*iterOfXLSElement)->mFloat;
+         values += ", ";
+         values += (*iterOfXLSElement)->mVolume;
+         values += ", ";
+         values += (*iterOfXLSElement)->mTurnOver;
+         values += ", ";
+         values += (*iterOfXLSElement)->mSB;
+         values += ")";
+         descriptions.push_back(values);
     }
+    DBWrapper::insertElementsInBatch(mDBName, mTableName, descriptions, NULL);
 
     DBWrapper::closeDB(mDBName);
 
