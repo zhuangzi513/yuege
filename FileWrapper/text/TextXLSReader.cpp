@@ -92,8 +92,8 @@ static bool parse(int32_t index, const std::string& srcString, XLSReader::XLSEle
     
     switch(index) {
       case XLSReader::XLSElement::TIME: {
-          printf("TIME\n");
-          printf("srcString:%s\n", srcString.c_str());
+          //printf("TIME\n");
+          //printf("srcString:%s\n", srcString.c_str());
           break;
       }
       case XLSReader::XLSElement::PRICE: {
@@ -117,8 +117,8 @@ static bool parse(int32_t index, const std::string& srcString, XLSReader::XLSEle
           break;
       }
       case XLSReader::XLSElement::SBFLAG: {
-          printf("SB\n");
-          printf("srcString:%s\n", srcString.c_str());
+          //printf("SB\n");
+          //printf("srcString:%s\n", srcString.c_str());
           break;
       }
       default:

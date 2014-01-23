@@ -20,9 +20,10 @@ CPP_FLAG:=\
 TARGET:=test
 
 $(TARGET):$(OBJS_DIR) main.o
-	$(MAKE) -C $(SRC_DIR)/FileWrapper
-	$(MAKE) -C $(SRC_DIR)/Build
-	$(CC) main.cpp $(CPP_FLAG) $(LD_FLAG) -o bin
+	gcc main.cpp Build/DBFilter.cpp Build/sqlite/sqlite3.c -I./Build -I./Build/sqlite -L/usr/lib/x86_64-linux-gnu/ -L/usr/lib -L/usr/lib64 -L/usr/lib/gcc/x86_64-linux-gnu/4.6/ -lpthread -ldl -lxml2 -lstdc++
+	#$(MAKE) -C $(SRC_DIR)/FileWrapper
+	#$(MAKE) -C $(SRC_DIR)/Build
+	#$(CC) main.cpp $(CPP_FLAG) $(LD_FLAG) -o bin
 
 main.o:%.o:%.cpp
 	$(CC) -c $< -o $(OBJS_DIR)/$@ $(CPP_FLAG) 

@@ -23,12 +23,12 @@
  *        : How long does each of them last ?
 **/
 
-class DBBuilder {
+class DBFilter {
   public:
     friend class DBSearcher;
 
-    DBBuilder();
-    ~DBBuilder();
+    DBFilter();
+    ~DBFilter();
 
     bool openOriginDB(std::string& name);
     bool closeOriginDB();

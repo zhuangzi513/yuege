@@ -1,4 +1,4 @@
-#include "DBBuilder.h"
+#include "DBFilter.h"
 #include "DBOperations.h"
 
 #include <stdlib.h>
@@ -9,13 +9,13 @@
 
 static char* sqlERR = NULL;
 
-DBBuilder::DBBuilder()
+DBFilter::DBFilter()
          : mOriginDB(NULL)
          , mFilterDB(NULL) {
    std::string test("");
 }
 
-DBBuilder::~DBBuilder() {
+DBFilter::~DBFilter() {
     if (mOriginDB) {
         delete mOriginDB;
         mOriginDB = NULL;
@@ -27,19 +27,19 @@ DBBuilder::~DBBuilder() {
     }
 }
 
-bool DBBuilder::openOriginDB(std::string& name) {
+bool DBFilter::openOriginDB(std::string& name) {
     int ret = DEFAULT_VALUE_FOR_INT;
     ret = sqlite3_open(ORIGIN_SQLITE_NAME, &mOriginDB);
     return (ret == SQLITE_OK) ? true : false;
 }
 
-bool DBBuilder::closeOriginDB() {
+bool DBFilter::closeOriginDB() {
     int ret = DEFAULT_VALUE_FOR_INT;
     ret = sqlite3_close(mOriginDB);
     return (ret == SQLITE_OK) ? true : false;
 }
 
-bool DBBuilder::openFilterDB(std::string& name) {
+bool DBFilter::openFilterDB(std::string& name) {
     //CHECK name
     int ret = DEFAULT_VALUE_FOR_INT;
     ret = sqlite3_open(name.c_str(), &mFilterDB);
@@ -47,18 +47,19 @@ bool DBBuilder::openFilterDB(std::string& name) {
         printf("Fail to open DB:%s\n", name.c_str());
         return false;
     }
+    //sqlite3_close(mFilterDB);
 
     return true;
 }
 
-bool DBBuilder::closeFilterDB(std::string& name) {
+bool DBFilter::closeFilterDB(std::string& name) {
     //CHECK name
     int ret = DEFAULT_VALUE_FOR_INT;
     ret = sqlite3_close(mFilterDB);
     return (ret == SQLITE_OK) ? true : false;
 }
 
-bool DBBuilder::selectElements(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::selectElements(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
     sqlite3* targetDB = getDBByName(DBName);
     ret = sqlite3_exec(targetDB, description.c_str(), *fCallback, NULL, &sqlERR);
@@ -69,32 +70,7 @@ bool DBBuilder::selectElements(std::string& DBName, std::string& tableName, std:
     return true;
 }
 
-bool DBBuilder::createTable1(std::string& DBName, std::string& tableName) {
-    int ret = DEFAULT_VALUE_FOR_INT;
-    std::string sql(CREATE_TABLE + tableName + TABLE_FORMAT1);
-    sqlite3* targetDB = getDBByName(DBName);
-
-    if (targetDB == NULL) {
-        printf("Fail to get DB:%s\n", DBName.c_str());
-        return false;
-    }
-
-    printf("sql:%s\n", sql.c_str());
-    ret = sqlite3_exec(targetDB, sql.c_str(), NULL, NULL, &sqlERR);
-    if (ret != SQLITE_OK) {
-        std::string error(sqlERR);
-        if (error.find("already exists")) {
-            printf("Table:%s exists in DB:%s\n", tableName.c_str(), DBName.c_str());
-            return true;
-        }
-        printf("Fail to create Table:%s DB:%s\n", tableName.c_str(), DBName.c_str());
-        return false;
-    }
-
-    return true;
-}
-
-bool DBBuilder::createTable2(std::string& DBName, std::string& tableName) {
+bool DBFilter::createTable1(std::string& DBName, std::string& tableName) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string sql(CREATE_TABLE + tableName + TABLE_FORMAT2);
     sqlite3* targetDB = getDBByName(DBName);
@@ -119,15 +95,40 @@ bool DBBuilder::createTable2(std::string& DBName, std::string& tableName) {
     return true;
 }
 
-bool DBBuilder::selectARowByColumns(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback* fCallback) {
+bool DBFilter::createTable2(std::string& DBName, std::string& tableName) {
+    int ret = DEFAULT_VALUE_FOR_INT;
+    std::string sql(CREATE_TABLE + tableName + TABLE_FORMAT2);
+    sqlite3* targetDB = getDBByName(DBName);
+
+    if (targetDB == NULL) {
+        printf("Fail to get DB:%s\n", DBName.c_str());
+        return false;
+    }
+
+    printf("sql:%s\n", sql.c_str());
+    ret = sqlite3_exec(targetDB, sql.c_str(), NULL, NULL, &sqlERR);
+    if (ret != SQLITE_OK) {
+        std::string error(sqlERR);
+        if (error.find("already exists")) {
+            printf("Table:%s exists in DB:%s\n", tableName.c_str(), DBName.c_str());
+            return true;
+        }
+        printf("Fail to create Table:%s DB:%s\n", tableName.c_str(), DBName.c_str());
+        return false;
+    }
+
     return true;
 }
 
-bool DBBuilder::selectAColumnByRows(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback* fCallback) {
+bool DBFilter::selectARowByColumns(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback* fCallback) {
     return true;
 }
 
-bool DBBuilder::insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback) {
+bool DBFilter::selectAColumnByRows(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback* fCallback) {
+    return true;
+}
+
+bool DBFilter::insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string sql("");
     sqlite3* targetDB = getDBByName(DBName);
@@ -137,7 +138,6 @@ bool DBBuilder::insertElement(std::string& DBName, std::string& tableName, std::
     }
 
     sql = INSERT_OP + tableName + KeyAndValues;
-    printf("sql:%s\n", sql.c_str());
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
         printf("sqlErr:%s\n", sqlERR);
@@ -147,7 +147,7 @@ bool DBBuilder::insertElement(std::string& DBName, std::string& tableName, std::
     return true;
 }
 
-bool DBBuilder::deleteElement(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback fCallback) {
+bool DBFilter::deleteElement(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string sql("");
     sqlite3* targetDB = getDBByName(DBName);
@@ -165,11 +165,11 @@ bool DBBuilder::deleteElement(std::string& DBName, std::string& tableName, std::
     return true;
 }
 
-bool DBBuilder::updateElement(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::updateElement(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
-bool DBBuilder::joinTables(std::string& DBName, std::string& srcTableName, std::string& targetTableName, sqlite3_callback fCallback) {
+bool DBFilter::joinTables(std::string& DBName, std::string& srcTableName, std::string& targetTableName, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string sql("");
 
@@ -200,37 +200,37 @@ bool DBBuilder::joinTables(std::string& DBName, std::string& srcTableName, std::
     return true;
 }
 
-bool DBBuilder::insertColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::insertColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
-bool DBBuilder::deleteColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::deleteColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
-bool DBBuilder::updateColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::updateColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
-bool DBBuilder::insertRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::insertRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
-bool DBBuilder::deleteRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::deleteRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
-bool DBBuilder::updateRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
+bool DBFilter::updateRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback) {
     return true;
 }
 
 
 //=======private
-sqlite3* DBBuilder::getDBByName(std::string& DBName) {
+sqlite3* DBFilter::getDBByName(std::string& DBName) {
     //JUST FOR NOW
     return mFilterDB;
 }
 
-bool DBBuilder::isTableExist(std::string& DBName, std::string& tableName) {
+bool DBFilter::isTableExist(std::string& DBName, std::string& tableName) {
     return true;
 }

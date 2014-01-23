@@ -18,7 +18,7 @@ TARGET:=libFileWrapper.so
 
 $(TARGET):$(OBJS)
 	echo $(OBJS)
-	$(LD) $< -o $@ $(LD_FLAG)
+	#$(LD) $< -o $@ $(LD_FLAG)
 ifdef TEST
 	$(MAKE)  $(LOCAL)/test/
 endif
@@ -27,4 +27,4 @@ $(OBJS):%.o:%.cpp
 	$(CC) -c $< -o $@  $(CPP_FLAG)
 
 clean:
-	rm $(OBJS)
+	rm -f $(OBJS) $(TARGET)

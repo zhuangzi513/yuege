@@ -2,13 +2,13 @@
 #include <stdio.h>
 #include <string>
 
-#include "DBBuilder.h"
+#include "DBFilter.h"
 #include "DBOperations.h"
 
 static std::string guseless("useless");
 static std::string gfilterDBName("filter.db");
 static std::string gfilterTableName("test");
-static DBBuilder* gBuilder = NULL;
+static DBFilter* gBuilder = NULL;
 
 int testCallback(void *arg1, int arg2, char **arg3, char **arg4) {
     static int count = 0;
@@ -118,7 +118,7 @@ int printTable(std::string& DBName, std::string& tableName) {
 
 int main() {
    bool ret = false;
-   gBuilder = new DBBuilder();
+   gBuilder = new DBFilter();
 
    ret = gBuilder->openFilterDB(gfilterDBName);
    if (!ret) {
