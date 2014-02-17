@@ -45,7 +45,7 @@ sqlite3* OriginDBHelper::getOriginDBForDate(const std::string& date) {
     return NULL;
 }
 
-bool OriginDBHelper::applyFilter(const std::string& filterComment) {
+bool OriginDBHelper::applyFilter(const std::string& filterComment, const std::string& tableName) {
     return true;
 }
 
@@ -137,7 +137,7 @@ bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*
          values += ")";
          descriptions.push_back(values);
     }
-    DBWrapper::insertElementsInBatch(mDBName, mTableName, descriptions, NULL);
+    DBWrapper::insertElementsInBatch(mDBName, mTableName, descriptions, detailInfoList, NULL);
 
     DBWrapper::closeDB(mDBName);
 

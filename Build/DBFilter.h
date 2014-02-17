@@ -6,21 +6,21 @@
 #include "sqlite3.h"
 
 /*
- * DB DSC
- *    ID   |    DATE0    |    DATE1    |    DATE2    |
- * 600000  | id_20131217 | id_20131218 | id_20131219 |
+ * This class is used to filter the OriginDatbase and save the result
+ * to another Database.
+ * For now, five types Filtered Result:
+ * Sale_Big : filtered by Turnover
+ * Buy_Big  : filtered by Turnover
  *
- * TAB DSC (id_DATE_i)
- *     B    |    S     |  TARGET_B  | TARGET_S
- * AMOUNT_B | AMOUNT_S |  AMOUNT_TB | AMOUNT_TS
+ * Price of Sale_Big : filtered by Turnover
+ * Price of Buy_Big  : filtered by Turnover
  *
- * Search 1:
- *        : 'AMOUNT_TB' > THRESHOLD for everyday every ID
- *        : 'AMOUNT_TS' > THRESHOLD for everyday every ID
- *        : 'AMOUNT_TS - AMOUNT_TB' > THRESHOLD for everyday every ID
+ * D-value of Sale_Big & Buy_Big : filtered by Turnover
  *
- * Search 2:
- *        : How long does each of them last ?
+ * Table of Filter Result:
+ *    ID   | 20131217     | 20131218     | 20131219     |
+ * 600000  | FilterResult | FilterResult | FilterResult |
+ *
 **/
 
 class DBFilter {
@@ -30,38 +30,26 @@ class DBFilter {
     DBFilter();
     ~DBFilter();
 
-    bool openOriginDB(std::string& name);
+    /*
+     * Filter the origin database with the aTurnover and save the result
+     * into another database.
+     */
+    bool filterOriginDBByTurnOver(const std::string& aDBName, int aMinTurnover, int aMaxTurnover);
+
+  private:
+    bool openOriginDB(const std::string& name);
     bool closeOriginDB();
-    bool selectElements(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-
-    bool openFilterDB(std::string& name);
-    bool closeFilterDB(std::string& name);
-
-    bool createTable1(std::string& DBName, std::string& tableName);
-    bool createTable2(std::string& DBName, std::string& tableName);
-    bool selectARowByColumns(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback* fCallback);
-    bool selectAColumnByRows(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback* fCallback);
-
-    bool insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback);
-    bool deleteElement(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback fCallback);
-    bool joinTables(std::string& DBName, std::string& srcTableName, std::string& targetTableName, sqlite3_callback fCallback);
-    bool updateElement(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-
-    bool insertColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-    bool deleteColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-    bool updateColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-
-    bool insertRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-    bool deleteRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-    bool updateRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
+    sqlite3* getDBByName(const std::string& DBName);
+    bool isTableExist(const std::string& DBName, const std::string& tableName);
 
   private:
-    sqlite3* getDBByName(std::string& DBName);
-    bool isTableExist(std::string& DBName, std::string& tableName);
-
-  private:
-    sqlite3* mOriginDB;
-    sqlite3* mFilterDB;
+    static sqlite3* mOriginDB;
+    static std::string mResultDBName;
+    static std::string mBigSaleTableName;
+    static std::string mBigSalePriceTableName;
+    static std::string mBigBuyTableName;
+    static std::string mBigBuyPriceTableName;
+    static std::string mDiffBigBuySaleTableName;
 };
 
 #endif

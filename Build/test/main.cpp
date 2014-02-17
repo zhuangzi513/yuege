@@ -1,5 +1,6 @@
 
 #include "OriginDBHelper.h"
+#include "DBFilter.h"
 #include "sqlite3.h"
 
 #include <stdio.h>
@@ -36,8 +37,15 @@ bool createOriginDB(const std::string& fileName)
     return true;
 }
 
+bool filterOriginDB(std::string& fileName) {
+    DBFilter *pDBFilter = new DBFilter();
+    pDBFilter->filterOriginDBByTurnOver(fileName, 100, 1000);
+    return true;
+}
+
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
    createOriginDB(fileName);
+   filterOriginDB(fileName);
    return 1;
 }

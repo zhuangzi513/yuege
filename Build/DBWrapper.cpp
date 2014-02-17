@@ -12,6 +12,42 @@
 
 static char* sqlERR = NULL;
 
+static bool bindCommand(XLSReader::XLSElement* xlsElement, sqlite3_stmt* stmt) {
+    int ret = -1;
+    //FIXME: For now, time is not used.
+    //ret = sqlite3_bind_text(stmt, 0, xlsElement->mTime.c_str(), -1, NULL);
+    //if (ret != SQLITE_OK) {
+    //    LOGI(LOGTAG, "bind Time Fail: %s", xlsElement->mTime.c_str());
+    //    return false;
+    //}
+    ret = sqlite3_bind_double(stmt, 1, atof(xlsElement->mPrice.c_str()));
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind Price Fail: %s", xlsElement->mPrice.c_str());
+        return false;
+    }
+    ret = sqlite3_bind_double(stmt, 2, atof(xlsElement->mFloat.c_str()));
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind Float Fail: %s", xlsElement->mFloat.c_str());
+        return false;
+    }
+    ret = sqlite3_bind_int(stmt, 3, atoi(xlsElement->mVolume.c_str()));
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind Volume Fail: %s", xlsElement->mVolume.c_str());
+        return false;
+    }
+    ret = sqlite3_bind_double(stmt, 4, atof(xlsElement->mTurnOver.c_str()));
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind TurnOver Fail: %s", xlsElement->mTurnOver.c_str());
+        return false;
+    }
+    ret = sqlite3_bind_text(stmt, 5, xlsElement->mSB.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind SB Fail: %s", xlsElement->mSB.c_str());
+        return false;
+    }
+    return true;
+}
+
 //static
 std::map<std::string, sqlite3*> DBWrapper::mDatabaseMap;
 
@@ -62,7 +98,7 @@ bool DBWrapper::openTable(int32_t typeOfTable, std::string& DBName, std::string&
 
     switch(typeOfTable) {
       case ORIGIN_TABLE: {
-        tableFormat = TABLE_FORMAT_ORIGIN;
+        tableFormat = TABLE_FORMAT_ORIGIN_DEF;
         break;
       }
       case FILTER_TABLE: {
@@ -118,13 +154,17 @@ bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::
     return true;
 }
 
-bool DBWrapper::insertElementsInBatch(std::string& DBName, std::string& tableName, std::list<std::string>& values, sqlite3_callback fCallback) {
+bool DBWrapper::insertElementsInBatch(std::string& DBName,
+                                      std::string& tableName,
+                                      std::list<std::string>& strValues,
+                                      std::list<XLSReader::XLSElement*>& xlsValues,
+                                      sqlite3_callback fCallback) {
     
     sqlite3_stmt* stmt = NULL;
     sqlite3* targetDB = getDBByName(DBName);
     
     // The first description is the format of values to insert
-    std::string format = (*values.begin());
+    std::string format = *(strValues.begin());
     std::string sql = INSERT_OP + tableName + format;
     printf("DBWrapper: sql:%s, targetDB:%p\n", sql.c_str(), targetDB);
     int ret = sqlite3_prepare(targetDB,
@@ -141,15 +181,20 @@ bool DBWrapper::insertElementsInBatch(std::string& DBName, std::string& tableNam
     }
 
     beginBatch(targetDB);
-    std::list<std::string>::iterator itrOfValues;
-    // FIXME:  begin --> end
-    for (itrOfValues = values.end(); itrOfValues != values.begin(); itrOfValues--) {
-         printf("DBWrapper insert:%s\n", (*itrOfValues).c_str());
-         if (sqlite3_step(stmt) != SQLITE_DONE){
+    std::list<XLSReader::XLSElement*>::iterator itrOfValues;
+    //FIXME: The first two elements of input arg 'values' are:
+    //       1) (Time, Price, Float, Volume,  TurnOver,  SaleBuy) VALUES (?, ?, ?, ?, ?, ?)
+    //       2) 成交时间        成交价  价格变动        成交量(手)      成交额(元)      性质
+    //       So, ignore them.
+    size_t listLen = xlsValues.size();
+    size_t i = 0;
+    for (itrOfValues = xlsValues.begin(); itrOfValues != xlsValues.end(); itrOfValues++) {
+         sqlite3_reset(stmt);
+         if (bindCommand(*itrOfValues, stmt) &&
+             sqlite3_step(stmt) != SQLITE_DONE){
              //LOGE
              return false;  
          }  
-         sqlite3_reset(stmt);
     }
     sqlite3_finalize(stmt);
     endBatch(targetDB);

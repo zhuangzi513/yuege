@@ -45,18 +45,18 @@ C_OBJS+=$(C_SRC:.c=.o)
 
 $(TARGET):$(CPP_OBJS) $(C_OBJS)
 	echo $(CPP_OBJS) $(C_OBJS)
-	$(CC) $(CPP_OBJS) $(C_OBJS) -o $@ $(LD_FLAG) $(CPP_FLAG)
+	$(CC) $(CPP_OBJS) $(C_OBJS) -g -o $@ $(LD_FLAG) $(CPP_FLAG)
 
 $(CPP_OBJS):%.o:%.cpp
 	echo $(CPP_OBJS)
-	$(CC) -c $< -o $@ $(LD_FLAG) $(CPP_FLAG)
+	$(CC) -c -g $< -o $@ $(LD_FLAG) $(CPP_FLAG)
 
 $(C_OBJS):%.o:%.c
 	echo $(C_OBJS)
-	$(CC) -c $< -o $@ $(LD_FLAG) $(CPP_FLAG)
+	$(CC) -c -g $< -o $@ $(LD_FLAG) $(CPP_FLAG)
 
 clean:
-	rm -f $(TARGET) *.db *log*
+	rm -f $(TARGET) *.db *log* core
 
 distclean:
 	rm -f $(CPP_OBJS) $(C_OBJS) $(TARGET) *.db
