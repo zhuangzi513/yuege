@@ -1,13 +1,16 @@
 #include "TextXLSReader.h"
 
 #include "ConstDefines.h"
+#include "ErrorDefines.h"
 
 #include <stdlib.h>
 #include <fstream>
+#include <errno.h>
 
 #define SPACE ' '
 #define TAB   '	'
 #define INTERNAL_MAX 900
+#define LOGTAG "TextXLSReader"
 
 //FIXME: Add this to fix the linker Error: no definition of `__dso_handle'
 #ifndef TEST
@@ -27,15 +30,18 @@ TextXLSReader::~TextXLSReader() {
 
 //static
 bool TextXLSReader::getElementsFrom(const std::string& fileName, std::list<XLSReader::XLSElement*>& out) {
+    LOGI(LOGTAG, "fileName:%s", fileName.c_str());
     if (fileName.empty()) {
         //LOG ERR
         return false;
     }
 
+    errno = 0;
     std::ifstream fileStream;
     //ios::in : read the file content into the mem
     //1       : readonly
     fileStream.open(fileName.c_str(), std::ios::in);
+    LOGI(LOGTAG, "errno:%d", errno);
     if (fileStream.fail()) {
         //LOG ERR
         return false;
@@ -47,6 +53,7 @@ bool TextXLSReader::getElementsFrom(const std::string& fileName, std::list<XLSRe
     }
 
     fileStream.close();
+    fileStream.clear();
     return true;
 }
 

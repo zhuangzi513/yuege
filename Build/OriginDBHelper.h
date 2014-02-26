@@ -26,7 +26,9 @@ class OriginDBHelper {
     OriginDBHelper();
     ~OriginDBHelper();
 
-    bool createOriginDBFromFile(const std::string& name);
+    bool travelDir(const std::string& dirName, const std::string& fileName="");
+    bool createOriginDBForDir(const std::string& dirName);
+    bool createOriginTableFromFile(const std::string& name);
     sqlite3* getOriginDBForDate(const std::string& date);
     bool applyFilter(const std::string& filterComment, const std::string& tableName);
 
@@ -37,8 +39,10 @@ class OriginDBHelper {
     bool initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList);
 
   private:
-    std::string mDBName;
+    static std::string mDetailPrefix;
+    std::string mPreDBName;
+    std::string mCurDBName;
     std::string mTableName;
-    //std::Map<std::string, std::string> mOriginDBMaps
+    std::list<std::string> mOriginFiles;
 };
 #endif

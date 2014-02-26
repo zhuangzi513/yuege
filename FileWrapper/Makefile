@@ -7,6 +7,7 @@ OBJS := $(CPP_SRC:.cpp=.o)
 
 CPP_FLAG := \
     -I$(LOCAL)      \
+    -I$(LOCAL)/../common \
     -I$(LOCAL)/text \
     $(NULL)
 

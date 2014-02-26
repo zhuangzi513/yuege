@@ -1,3 +1,4 @@
+#include "ErrorDefines.h"
 #include "DBOperations.h"
 #include "OriginDBHelper.h"
 
@@ -5,10 +6,21 @@
 #include "DBWrapper.h"
 
 #include <list>
+#include <algorithm> 
+//LINUX
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
+#include <dirent.h>
+#include <errno.h>
+//====
 
 #define LOGTAG   "OriginDBHelper"
 #define SUFFIX_OF_DB_TYPE ".db"
 #define PREFIX_OF_TABLE   "Table"
+
+//FIXME: not here
+std::string OriginDBHelper::mDetailPrefix = "details";
 
 OriginDBHelper::OriginDBHelper() {
 }
@@ -16,17 +28,96 @@ OriginDBHelper::OriginDBHelper() {
 OriginDBHelper::~OriginDBHelper() {
 }
 
+bool OriginDBHelper::travelDir(const std::string& dirName, const std::string& fileName) {
+    std::string fullName = dirName + fileName;
+    struct dirent* pDirent = NULL;
+    struct stat s;
+    DIR* pDir = NULL;
+    std::string childName;
 
-bool OriginDBHelper::createOriginDBFromFile(const std::string& fileName) {
-    std::string date;
-    std::string stockID;
-    // Need to figure out how to generate the DBName and TableName from
-    // DBName = StockID && TableName = date ???
-
-    if (!getSpecsFromFileName(fileName, date, stockID)) {
+    LOGI(LOGTAG, "opendir for:%s", fullName.c_str());
+    pDir = opendir(fullName.c_str());
+    if (pDir == NULL) {
+        LOGI(LOGTAG, "Fail to opendir:%s %s", dirName.c_str(), fileName.c_str());
         return false;
     }
 
+    while (true) {
+        errno = 0;
+        pDirent = readdir(pDir);
+        if (pDirent != NULL) {
+            if ((strcmp((const char*)pDirent->d_name, ".") == 0) ||
+                (strcmp((const char*)pDirent->d_name, "..") == 0) ||
+                (strcmp((const char*)pDirent->d_name, ".git") == 0)) {
+                errno = 0;
+                continue;
+            }
+
+            childName = fullName + "/" + pDirent->d_name;
+            if (lstat(childName.c_str(), &s) == -1) {
+                LOGI(LOGTAG, "lstat errno:%d", errno);
+                errno = 0;
+                continue;
+            }
+
+            if (S_ISDIR(s.st_mode)) {
+                travelDir(childName.c_str());
+            } else if (S_ISREG(s.st_mode)) {
+                mOriginFiles.push_back(childName);
+            } else {
+                LOGI(LOGTAG, "Error OTHER");
+                break;
+            }
+        } else {
+            LOGI(LOGTAG, "Error Fail to readdir from:%s", fullName.c_str());
+            break;
+        }
+    }
+    closedir(pDir);
+    return true;
+}
+
+bool OriginDBHelper::createOriginDBForDir(const std::string& dirName) {
+    std::list<std::string>::iterator singleOriginFileName;
+    size_t i = 0;
+
+    travelDir(dirName);
+    mOriginFiles.sort();
+
+    LOGI(LOGTAG, "Size of files to open:%d", mOriginFiles.size());
+    for (singleOriginFileName = mOriginFiles.begin(), i = 0; i < mOriginFiles.size(); singleOriginFileName++, i++) {
+         LOGI(LOGTAG, "create OriginDB from file:%s\n", (*singleOriginFileName).c_str());
+         if (!createOriginTableFromFile(*singleOriginFileName)) {
+             perror("Reason:");
+             LOGI(LOGTAG, "Fail to open %dth file", i);
+             return false;
+         }
+    }
+
+    return true;
+}
+
+bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName) {
+    std::string dbName;
+    std::string tableName;
+    // Need to figure out how to generate the DBName and TableName from
+    // DBName = StockID && TableName = date ???
+
+    if (!getSpecsFromFileName(fileName, tableName, dbName)) {
+        return false;
+    }
+
+    if (dbName != mCurDBName) {
+        if (mCurDBName.length() > 0) {
+            //FIXME: the init value of mCurDBName is ""
+            LOGI(LOGTAG, "close DB:%s", mCurDBName.c_str());
+            DBWrapper::closeDB(mCurDBName);
+        }
+        mCurDBName = dbName;
+    }
+    mTableName = tableName;
+
+    LOGI(LOGTAG, "fileName:%s", fileName.c_str());
     std::list<XLSReader::XLSElement*> detailInfoList;
     if (!TextXLSReader::getElementsFrom(fileName, detailInfoList)) {
         printf("Fail to parse :%s\n", fileName.c_str());
@@ -34,7 +125,7 @@ bool OriginDBHelper::createOriginDBFromFile(const std::string& fileName) {
     }
 
     if (!initOriginDBWithDetailInfo(detailInfoList)) {
-        printf("Fail to Fill Database:%s with the file:%s\n", mDBName.c_str(), fileName.c_str());
+        printf("Fail to Fill Database:%s with the file:%s, errno:%d\n", mCurDBName.c_str(), fileName.c_str(), errno);
         return false;
     }
 
@@ -50,22 +141,24 @@ bool OriginDBHelper::applyFilter(const std::string& filterComment, const std::st
 }
 
 bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
-                                          std::string& date, std::string& stockID) {
+                                          std::string& tableName, std::string& dbName) {
     // Retrieve the info from fileName
-    // Asume that: the format of fileName is "6000001/2013/01/01.xls"
+    // Asume that: the format of fileName is "DETAILS/6000001/2013/01/01.xls"
 
-    int32_t start = fileName.find_first_of('/') + 1;
-    int32_t end = fileName.find_first_of('.');
-    stockID = fileName.substr(0, fileName.find_first_of('/'));
-    date    = fileName.substr(start, end - start);
+    std::string fileNoPrefix = fileName.substr(mDetailPrefix.length() + 1);
+
+    int32_t start = fileNoPrefix.find_first_of('/') + 1;
+    int32_t end   = fileNoPrefix.find_first_of('.');
+    dbName    = fileNoPrefix.substr(0, fileNoPrefix.find_first_of('/'));
+    tableName = fileNoPrefix.substr(start, end - start);
     char c = '0';
-    for (int32_t i = 0; i < date.length(); i++ ) {
-         if (date[i] == '/')
-             date[i] = '0';
+    for (int32_t i = 0; i < tableName.length(); i++ ) {
+         if (tableName[i] == '/')
+             tableName[i] = '0';
     }
 
-    mDBName    = stockID + SUFFIX_OF_DB_TYPE;
-    mTableName = PREFIX_OF_TABLE + date;
+    dbName = dbName + SUFFIX_OF_DB_TYPE;
+    tableName = PREFIX_OF_TABLE + tableName;
     return true;
 }
 
@@ -95,13 +188,14 @@ bool OriginDBHelper::insertElement(const XLSReader::XLSElement* detailInfo) {
     values += ")";
 
     insertDescription = std::string(members) + std::string(values);
-    return DBWrapper::insertElement(mDBName, mTableName, insertDescription, NULL);
+    return DBWrapper::insertElement(mCurDBName, mTableName, insertDescription, NULL);
 }
 
 bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList) {
     // FIXME:Take care of the instance being released by other
     // thread. We may add a lock in the DBWrapper to handle the
-    if (!DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, mDBName, mTableName)) {
+    LOGI(LOGTAG, "openTable, mCurDBName:%s, mTableName:%s", mCurDBName.c_str(), mTableName.c_str());
+    if (!DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, mCurDBName, mTableName)) {
         return false;
     }
 
@@ -137,9 +231,7 @@ bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*
          values += ")";
          descriptions.push_back(values);
     }
-    DBWrapper::insertElementsInBatch(mDBName, mTableName, descriptions, detailInfoList, NULL);
-
-    DBWrapper::closeDB(mDBName);
+    DBWrapper::insertElementsInBatch(mCurDBName, mTableName, descriptions, detailInfoList, NULL);
 
     return true;
 }

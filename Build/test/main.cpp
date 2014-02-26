@@ -32,7 +32,7 @@ bool createOriginDB(const std::string& fileName)
 {
     OriginDBHelper* originDBHelper = new OriginDBHelper();
     if (originDBHelper) {
-        originDBHelper->createOriginDBFromFile(fileName);
+        originDBHelper->createOriginTableFromFile(fileName);
     }
     return true;
 }
@@ -43,9 +43,16 @@ bool filterOriginDB(std::string& fileName) {
     return true;
 }
 
+bool createOriginDBForDir(const std::string& dirName) {
+    OriginDBHelper* originDBHelper = new OriginDBHelper();
+    if (originDBHelper) {
+        originDBHelper->createOriginDBForDir(dirName);
+    }
+    return true;
+}
+
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   createOriginDB(fileName);
-   filterOriginDB(fileName);
+   createOriginDBForDir("details");
    return 1;
 }

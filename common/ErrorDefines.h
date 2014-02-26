@@ -9,7 +9,8 @@
             printf("\n");                          \
        } while(0);
 
-#define LOGD(LOGTAG, ...)                          \
+#define LOGD(LOGTAG, ...)                         
+//#define LOGD(LOGTAG, ...)                          \
        do {                                        \
             printf(LOGTAG);                        \
             printf(" %s:%d ", __FILE__, __LINE__); \

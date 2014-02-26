@@ -79,6 +79,7 @@ bool DBWrapper::openDB(const std::string& DBName, sqlite3** ppDB) {
 bool DBWrapper::closeDB(const std::string& DBName) {
     sqlite3* targetDB = getDBByName(DBName);
     sqlite3_close(targetDB);
+    mDatabaseMap.erase(DBName);
     return true;
 }
 
@@ -116,6 +117,7 @@ bool DBWrapper::openTable(int32_t typeOfTable, std::string& DBName, std::string&
     sqlite3* targetDB = getDBByName(DBName);
     std::string sql(CREATE_TABLE + tableName + tableFormat);
 
+    LOGI(LOGTAG, "targetDB:%p", targetDB);
     if (!targetDB && !openDB(DBName, &targetDB)) {
         LOGE(LOGTAG, "Fail to get Database with name %s\n", DBName.c_str());
         LOGE(LOGTAG, "And fail to open a new Database with name %s either\n", DBName.c_str());
