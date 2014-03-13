@@ -93,13 +93,17 @@ bool DBWrapper::endBatch(sqlite3* db) {
     return true;
 }
 
-bool DBWrapper::openTable(int32_t typeOfTable, std::string& DBName, std::string& tableName) {
+bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string tableFormat;
 
     switch(typeOfTable) {
       case ORIGIN_TABLE: {
         tableFormat = TABLE_FORMAT_ORIGIN_DEF;
+        break;
+      }
+      case FILTER_SALE_TRUNOVER_TABLE: {
+        tableFormat = TABLE_FORMAT_FILTER_TURNOVER_SALE_DEF;
         break;
       }
       case FILTER_TABLE: {

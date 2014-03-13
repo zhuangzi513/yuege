@@ -195,7 +195,9 @@ bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*
     // FIXME:Take care of the instance being released by other
     // thread. We may add a lock in the DBWrapper to handle the
     LOGI(LOGTAG, "openTable, mCurDBName:%s, mTableName:%s", mCurDBName.c_str(), mTableName.c_str());
-    if (!DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, mCurDBName, mTableName)) {
+    const std::string curDBName(mCurDBName);
+    const std::string curTableName(mTableName);
+    if (!DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, curDBName, curDBName)) {
         return false;
     }
 
