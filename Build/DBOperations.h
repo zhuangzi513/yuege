@@ -9,6 +9,9 @@
 
 #define TABLE_FORMAT_ORIGIN_DEF   " (Time varchar(12), Price double, Float double, Volume int,  TurnOver double,  SaleBuy varchar(6)) "
 #define TABLE_FORMAT_ORIGIN   " (Time, Price, Float, Volume,  TurnOver,  SaleBuy) "
+
+#define TABLE_FORMAT_FILTER_TURNOVER_DEF " (Volume, TurnOver, SaleBuy) "
+#define TABLE_FORMAT_FILTER_RESULT_DEF " (Date varchar(12), TurnOverSale int, PriceSale double, TurnOverBuy int, PriceBuy double) "
 //default
 #define D_STMT_FORMAT_ORGIN   " VALUES (?, ?, ?, ?, ?, ?) "
 //spec

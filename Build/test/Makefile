@@ -56,7 +56,7 @@ $(C_OBJS):%.o:%.c
 	$(CC) -c -g $< -o $@ $(LD_FLAG) $(CPP_FLAG)
 
 clean:
-	rm -f $(TARGET) *.db *log* core
+	rm -f $(TARGET) *.db* *log* core
 
 distclean:
 	rm -f $(CPP_OBJS) $(C_OBJS) $(TARGET) *.db

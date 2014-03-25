@@ -1,9 +1,9 @@
 LOCAL := /home/ramo/Documents/yue/yuege/Build
 
 CPP_SRC := \
-    $(LOCAL)/DBFilter.cpp       \
     $(LOCAL)/DBWrapper.cpp      \
-    $(LOCAL)/OriginDBHelper.cpp
+    $(LOCAL)/OriginDBHelper.cpp \
+    $(LOCAL)/DBFilter.cpp
 
 C_SRC := \
     $(LOCAL)/sqlite/sqlite3.c

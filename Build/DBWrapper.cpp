@@ -15,32 +15,32 @@ static char* sqlERR = NULL;
 static bool bindCommand(XLSReader::XLSElement* xlsElement, sqlite3_stmt* stmt) {
     int ret = -1;
     //FIXME: For now, time is not used.
-    //ret = sqlite3_bind_text(stmt, 0, xlsElement->mTime.c_str(), -1, NULL);
-    //if (ret != SQLITE_OK) {
-    //    LOGI(LOGTAG, "bind Time Fail: %s", xlsElement->mTime.c_str());
-    //    return false;
-    //}
-    ret = sqlite3_bind_double(stmt, 1, atof(xlsElement->mPrice.c_str()));
+    ret = sqlite3_bind_text(stmt, 1, xlsElement->mTime.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind Time Fail: %s", xlsElement->mTime.c_str());
+        return false;
+    }
+    ret = sqlite3_bind_double(stmt, 2, atof(xlsElement->mPrice.c_str()));
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind Price Fail: %s", xlsElement->mPrice.c_str());
         return false;
     }
-    ret = sqlite3_bind_double(stmt, 2, atof(xlsElement->mFloat.c_str()));
+    ret = sqlite3_bind_double(stmt, 3, atof(xlsElement->mFloat.c_str()));
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind Float Fail: %s", xlsElement->mFloat.c_str());
         return false;
     }
-    ret = sqlite3_bind_int(stmt, 3, atoi(xlsElement->mVolume.c_str()));
+    ret = sqlite3_bind_int(stmt, 4, atoi(xlsElement->mVolume.c_str()));
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind Volume Fail: %s", xlsElement->mVolume.c_str());
         return false;
     }
-    ret = sqlite3_bind_double(stmt, 4, atof(xlsElement->mTurnOver.c_str()));
+    ret = sqlite3_bind_double(stmt, 5, atof(xlsElement->mTurnOver.c_str()));
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind TurnOver Fail: %s", xlsElement->mTurnOver.c_str());
         return false;
     }
-    ret = sqlite3_bind_text(stmt, 5, xlsElement->mSB.c_str(), -1, NULL);
+    ret = sqlite3_bind_text(stmt, 6, xlsElement->mSB.c_str(), -1, NULL);
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind SB Fail: %s", xlsElement->mSB.c_str());
         return false;
@@ -93,13 +93,21 @@ bool DBWrapper::endBatch(sqlite3* db) {
     return true;
 }
 
-bool DBWrapper::openTable(int32_t typeOfTable, std::string& DBName, std::string& tableName) {
+bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string tableFormat;
 
     switch(typeOfTable) {
       case ORIGIN_TABLE: {
         tableFormat = TABLE_FORMAT_ORIGIN_DEF;
+        break;
+      }
+      case FILTER_TRUNOVER_TABLE: {
+        tableFormat = TABLE_FORMAT_FILTER_TURNOVER_DEF;
+        break;
+      }
+      case FILTER_RESULT_TABLE: {
+        tableFormat = TABLE_FORMAT_FILTER_RESULT_DEF;
         break;
       }
       case FILTER_TABLE: {
@@ -128,8 +136,8 @@ bool DBWrapper::openTable(int32_t typeOfTable, std::string& DBName, std::string&
     if (ret != SQLITE_OK) {
         std::string error(sqlERR);
         if (error.find("already exists")) {
-            LOGD(LOGTAG, "%s\n", sqlERR);
-            LOGD(LOGTAG, "There is already a Table with name %s\n", tableName.c_str());
+            LOGI(LOGTAG, "%s\n", sqlERR);
+            LOGI(LOGTAG, "There is already a Table with name %s\n", tableName.c_str());
             return true;
         }
 
@@ -149,7 +157,7 @@ bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
         LOGE(LOGTAG, "%s\n", sqlERR);
-        LOGD(LOGTAG, "Discription is: %s\n", sql.c_str());
+        LOGI(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
 
@@ -212,7 +220,7 @@ bool DBWrapper::deleteElement(std::string& DBName, std::string& tableName, std::
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
         LOGE(LOGTAG, "%s\n", sqlERR);
-        LOGD(LOGTAG, "Discription is: %s\n", sql.c_str());
+        LOGI(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
  
@@ -237,7 +245,7 @@ bool DBWrapper::joinTables(std::string& DBName, std::string& srcTableName, std::
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
         LOGE(LOGTAG, "%s\n", sqlERR);
-        LOGD(LOGTAG, "Discription is: %s\n", sql.c_str());
+        LOGI(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
 

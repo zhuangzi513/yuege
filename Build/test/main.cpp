@@ -37,7 +37,7 @@ bool createOriginDB(const std::string& fileName)
     return true;
 }
 
-bool filterOriginDB(std::string& fileName) {
+bool filterOriginDB(const std::string& fileName) {
     DBFilter *pDBFilter = new DBFilter();
     pDBFilter->filterOriginDBByTurnOver(fileName, 100, 1000);
     return true;
@@ -53,6 +53,7 @@ bool createOriginDBForDir(const std::string& dirName) {
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   createOriginDBForDir("details");
+   //createOriginDBForDir("details");
+   filterOriginDB("600022.db");
    return 1;
 }

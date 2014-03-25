@@ -1,8 +1,9 @@
-#ifndef DB_BUILDER_H
-#define DB_BUILDER_H
+#ifndef DB_FILTER_H
+#define DB_FILTER_H
 
 #include <stdlib.h>
 #include <string>
+#include <list>
 #include "sqlite3.h"
 
 /*
@@ -38,17 +39,23 @@ class DBFilter {
 
   private:
     bool openOriginDB(const std::string& name);
-    bool closeOriginDB();
+    bool closeOriginDB(const std::string& name);
     sqlite3* getDBByName(const std::string& DBName);
     bool isTableExist(const std::string& DBName, const std::string& tableName);
 
+    bool getAllTablesOfDB(const std::string& tableName);
+
+    bool saveResultToResultTable(const std::string& aDBName, const std::string& tableName, const int turnoverSale, const float avgPriceSale, const int turnoverBuy, const float avgPriceBuy);
+    bool computeResultFromTable(const std::string& aDBName, const std::string& tableName);
+    bool clearTable(const std::string& tableName);
+    bool filterTableByTurnOver(const std::string& tableName, const int aMinTurnover);
+    bool filterAllTablesByTurnOver(const std::string& tableName, const int aMinTurnover);
+
   private:
     static sqlite3* mOriginDB;
-    static std::string mResultDBName;
-    static std::string mBigSaleTableName;
-    static std::string mBigSalePriceTableName;
-    static std::string mBigBuyTableName;
-    static std::string mBigBuyPriceTableName;
+    static std::list<std::string> mTableNames;
+    static std::string mResultTableName;
+    static std::string mTmpResultTableName;
     static std::string mDiffBigBuySaleTableName;
 };
 

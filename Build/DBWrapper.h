@@ -1,5 +1,5 @@
-#ifndef DB_BUILDER_H
-#define DB_BUILDER_H
+#ifndef DB_WRAPPER_H
+#define DB_WRAPPER_H
 
 #include <stdlib.h>
 #include <list>
@@ -24,6 +24,8 @@ class DBWrapper {
   public:
     enum {
       ORIGIN_TABLE = 0,
+      FILTER_TRUNOVER_TABLE,
+      FILTER_RESULT_TABLE,
       FILTER_TABLE,
       FINAL_TABLE
     };
@@ -31,7 +33,7 @@ class DBWrapper {
     ~DBWrapper();
 
     static DBWrapper* getInstance();
-    static bool openTable(int32_t typeOfTable, std::string& DBName, std::string& tableName);
+    static bool openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName);
     static bool openDB(const std::string& DBName, sqlite3** outDB);
     static bool closeDB(const std::string& DBName);
     static bool beginBatch(sqlite3* db);
