@@ -42,9 +42,6 @@ class DBFilter {
     bool closeOriginDB(const std::string& name);
     sqlite3* getDBByName(const std::string& DBName);
     bool isTableExist(const std::string& DBName, const std::string& tableName);
-    bool getAllTablesOfDB(const std::string& tableName);
-    bool fileterTableByTurnOver(const std::string& tableName, const int aMinTurnover);
-    bool filterAllTablesByTurnOver(const std::string& tableName, const int aMinTurnover);
 
     bool getAllTablesOfDB(const std::string& tableName);
 

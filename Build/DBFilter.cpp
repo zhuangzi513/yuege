@@ -200,21 +200,28 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
 
     {
         //FIXME: The first raw is Buy, second raw is Sale
-        int saleTurnOver = 0;
-        int buyTurnOver = 0;
+        int saleVolume = 0;
+        int buyVolume = 0;
+        double saleTurnOver = 0;
+        double buyTurnOver = 0;
         double avgSalePrice = 0.0;
         double avgBuyPrice = 0.0;
 
         while(sqlite3_step(stmt) == SQLITE_ROW) {
-            std::string sale_buy = (char*)sqlite3_column_text(stmt, 2);
+            std::string sale_buy("");
+            sale_buy = (char*)sqlite3_column_text(stmt, 2);
             LOGI(LOGTAG, "%s", sale_buy.c_str());
 
             if (sale_buy == std::string("true")) {
-                saleTurnOver = sqlite3_column_int(stmt, 1);
-                saleTurnOver = sqlite3_column_double(stmt, 2);
+                saleVolume = sqlite3_column_int(stmt, 0);
+                saleTurnOver = sqlite3_column_double(stmt, 1);
+                avgSalePrice = (saleTurnOver / (100 * saleVolume));
+                LOGI(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", saleVolume, saleTurnOver, avgSalePrice);
             } else if (sale_buy == std::string("false")) {
-                buyTurnOver = sqlite3_column_int(stmt, 1);
-                buyTurnOver = sqlite3_column_double(stmt, 2);
+                buyVolume = sqlite3_column_int(stmt, 0);
+                buyTurnOver = sqlite3_column_double(stmt, 1);
+                avgBuyPrice = (buyTurnOver / (100 * buyVolume));
+                LOGI(LOGTAG, "buy, volume:%d, turnover:%f, avg:%f", buyVolume, buyTurnOver, avgBuyPrice);
             } else {
                 // Not buy, not sale, just a normal.
                 // The sale_buy should be empty
