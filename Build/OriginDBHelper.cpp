@@ -17,7 +17,7 @@
 
 #define LOGTAG   "OriginDBHelper"
 #define SUFFIX_OF_DB_TYPE ".db"
-#define PREFIX_OF_TABLE   "Table"
+#define PREFIX_OF_TABLE   "O"
 
 //FIXME: not here
 std::string OriginDBHelper::mDetailPrefix = "details";
@@ -118,6 +118,8 @@ bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName) {
     mTableName = tableName;
 
     LOGI(LOGTAG, "fileName:%s", fileName.c_str());
+    LOGI(LOGTAG, "mCurDBName:%s", mCurDBName.c_str());
+    LOGI(LOGTAG, "mTableName:%s", mTableName.c_str());
     std::list<XLSReader::XLSElement*> detailInfoList;
     if (!TextXLSReader::getElementsFrom(fileName, detailInfoList)) {
         printf("Fail to parse :%s\n", fileName.c_str());
@@ -151,14 +153,30 @@ bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
     int32_t end   = fileNoPrefix.find_first_of('.');
     dbName    = fileNoPrefix.substr(0, fileNoPrefix.find_first_of('/'));
     tableName = fileNoPrefix.substr(start, end - start);
-    char c = '0';
-    for (int32_t i = 0; i < tableName.length(); i++ ) {
-         if (tableName[i] == '/')
-             tableName[i] = '0';
+    std::string year("");
+    std::string month("");
+    std::string day("");
+
+    // XXX: Year/Month/Day
+    year = tableName.substr(0, tableName.find_first_of('/'));
+    month = tableName.substr(tableName.find_first_of('/') + 1, tableName.find_last_of('/') - tableName.find_first_of('/') - 1);
+    day = tableName.substr(tableName.find_last_of('/') + 1);
+
+    // XXX: table name
+    if (month.size() < 2) {
+        month = "0" + month;
     }
 
+    if (day.size() < 2) {
+        day = "0" + day;
+    }
+
+    tableName = PREFIX_OF_TABLE + year + month + day;
+    LOGI(LOGTAG, "tableName:%s", tableName.c_str());
+
+    // XXX: database name
     dbName = dbName + SUFFIX_OF_DB_TYPE;
-    tableName = PREFIX_OF_TABLE + tableName;
+    LOGI(LOGTAG, "dbName:%s", dbName.c_str());
     return true;
 }
 
