@@ -45,13 +45,42 @@ class DBFilter {
 
     bool getAllTablesOfDB(const std::string& tableName);
 
-    bool saveResultToResultTable(const std::string& aDBName, const std::string& tableName, const int turnoverSale, const float avgPriceSale, const int turnoverBuy, const float avgPriceBuy);
+    bool saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName);
     bool computeResultFromTable(const std::string& aDBName, const std::string& tableName);
     bool clearTable(const std::string& tableName);
     bool filterTableByTurnOver(const std::string& tableName, const int aMinTurnover);
     bool filterAllTablesByTurnOver(const std::string& tableName, const int aMinTurnover);
 
   private:
+    class BaseResultData {
+      public:
+        BaseResultData()
+            : mSaleVolume(0)
+            , mBuyVolume(0)
+            , mSaleTurnOver(0.0)
+            , mBuyTurnOver(0.0)
+            , mSalePrice(0.0)
+            , mBuyPrice(0.0) {
+        }
+
+        BaseResultData(const BaseResultData& baseResultData) {
+            mSaleVolume   = baseResultData.mSaleVolume;
+            mBuyVolume    = baseResultData.mBuyVolume;
+            mSaleTurnOver = baseResultData.mSaleTurnOver;
+            mBuyTurnOver  = baseResultData.mBuyTurnOver;
+            mSalePrice    = baseResultData.mSalePrice;
+            mBuyPrice     = baseResultData.mBuyPrice;
+        }
+      public:
+        int mSaleVolume;
+        int mBuyVolume;
+        double mSaleTurnOver;
+        double mBuyTurnOver;
+        double mSalePrice;
+        double mBuyPrice;
+    };
+
+    std::list<BaseResultData> mBaseResultDatas;
     static sqlite3* mOriginDB;
     static std::list<std::string> mTableNames;
     static std::string mResultTableName;

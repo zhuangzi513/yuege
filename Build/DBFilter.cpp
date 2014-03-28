@@ -200,28 +200,22 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
 
     {
         //FIXME: The first raw is Buy, second raw is Sale
-        int saleVolume = 0;
-        int buyVolume = 0;
-        double saleTurnOver = 0;
-        double buyTurnOver = 0;
-        double avgSalePrice = 0.0;
-        double avgBuyPrice = 0.0;
-
+        BaseResultData tempBaseResultData;
         while(sqlite3_step(stmt) == SQLITE_ROW) {
             std::string sale_buy("");
             sale_buy = (char*)sqlite3_column_text(stmt, 2);
             LOGI(LOGTAG, "%s", sale_buy.c_str());
 
             if (sale_buy == std::string("true")) {
-                saleVolume = sqlite3_column_int(stmt, 0);
-                saleTurnOver = sqlite3_column_double(stmt, 1);
-                avgSalePrice = (saleTurnOver / (100 * saleVolume));
-                LOGI(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", saleVolume, saleTurnOver, avgSalePrice);
+                tempBaseResultData.mSaleVolume   = sqlite3_column_int(stmt, 0);
+                tempBaseResultData.mSaleTurnOver = sqlite3_column_double(stmt, 1);
+                tempBaseResultData.mSalePrice    = (tempBaseResultData.mSaleTurnOver/(100 * tempBaseResultData.mSaleVolume));
+                LOGI(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mSaleVolume, tempBaseResultData.mSaleTurnOver, tempBaseResultData.mSalePrice);
             } else if (sale_buy == std::string("false")) {
-                buyVolume = sqlite3_column_int(stmt, 0);
-                buyTurnOver = sqlite3_column_double(stmt, 1);
-                avgBuyPrice = (buyTurnOver / (100 * buyVolume));
-                LOGI(LOGTAG, "buy, volume:%d, turnover:%f, avg:%f", buyVolume, buyTurnOver, avgBuyPrice);
+                tempBaseResultData.mBuyVolume   = sqlite3_column_int(stmt, 0);
+                tempBaseResultData.mBuyTurnOver = sqlite3_column_double(stmt, 1);
+                tempBaseResultData.mBuyPrice    = (tempBaseResultData.mBuyTurnOver/(100 * tempBaseResultData.mBuyVolume));
+                LOGI(LOGTAG, "buy, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mBuyVolume, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyPrice);
             } else {
                 // Not buy, not sale, just a normal.
                 // The sale_buy should be empty
@@ -234,7 +228,7 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
             }
         }
 
-        //saveResultToResultTable(aDBName, mResultTableName, saleTurnOver, avgSalePrice, buyTurnOver, avgBuyPrice);
+        mBaseResultDatas.push_back(tempBaseResultData);
     }
 
     ret = sqlite3_finalize(stmt);
@@ -246,12 +240,7 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
     return true;
 }
 
-bool DBFilter::saveResultToResultTable(const std::string& aDBName,
-                                       const std::string& tableName,
-                                       const int turnoverSale,
-                                       const float avgPriceSale,
-                                       const int turnoverBuy,
-                                       const float avgPriceBuy) {
+bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName) {
     //FIXME: the 'tableName" MUST same to mResultTableName
     DBWrapper::openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, tableName);
 
@@ -361,15 +350,15 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
                  return false;
              }
 
-             ////Step 3: save to final result 
-             //if (!saveResultToResultTable(aDBName, mResultTableName)) {
-             //    return false;
-             //}
-
              if (!clearTable(mTmpResultTableName)) {
                  return false;
              }
          }
+    }
+
+    ////Step 3: save to final result 
+    if (!saveBaseResultInBatch(aDBName, mResultTableName)) {
+        return false;
     }
     DBWrapper::closeDB(aDBName);
     return true;
