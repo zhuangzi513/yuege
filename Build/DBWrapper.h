@@ -8,6 +8,7 @@
 #include "sqlite3.h"
 
 #include "XLSReader.h"
+#include "DBFilter.h"
 
 /*
  * There are more than one Database in this App, and all the operations to
@@ -41,6 +42,7 @@ class DBWrapper {
 
     static bool insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback);
     static bool insertElementsInBatch(std::string& DBName, std::string& tableName, std::list<std::string>& values, std::list<XLSReader::XLSElement*>& xlsValues, sqlite3_callback fCallback);
+    static bool insertFilterResultsInBatch(const std::string& DBName, const std::string& tableName, std::list<std::string>& values, std::list<DBFilter::BaseResultData>& filterResultValues, sqlite3_callback fCallback);
     static bool deleteElement(std::string& DBName, std::string& tableName, std::string& condition, sqlite3_callback fCallback);
     static bool joinTables(std::string& DBName, std::string& srcTableName, std::string& targetTableName, sqlite3_callback fCallback);
     static bool updateElement(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);

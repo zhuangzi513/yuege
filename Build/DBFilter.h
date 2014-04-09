@@ -46,12 +46,12 @@ class DBFilter {
     bool getAllTablesOfDB(const std::string& tableName);
 
     bool saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName);
-    bool computeResultFromTable(const std::string& aDBName, const std::string& tableName);
+    bool computeResultFromTable(const std::string& aDBName, const std::string& tmpTableName, const std::string& originTableName);
     bool clearTable(const std::string& tableName);
     bool filterTableByTurnOver(const std::string& tableName, const int aMinTurnover);
     bool filterAllTablesByTurnOver(const std::string& tableName, const int aMinTurnover);
 
-  private:
+  public:
     class BaseResultData {
       public:
         BaseResultData()
@@ -70,6 +70,7 @@ class DBFilter {
             mBuyTurnOver  = baseResultData.mBuyTurnOver;
             mSalePrice    = baseResultData.mSalePrice;
             mBuyPrice     = baseResultData.mBuyPrice;
+            mDate         = baseResultData.mDate;
         }
       public:
         int mSaleVolume;
@@ -78,6 +79,7 @@ class DBFilter {
         double mBuyTurnOver;
         double mSalePrice;
         double mBuyPrice;
+        std::string mDate;
     };
 
     std::list<BaseResultData> mBaseResultDatas;

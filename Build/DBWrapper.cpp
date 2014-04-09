@@ -48,6 +48,53 @@ static bool bindCommand(XLSReader::XLSElement* xlsElement, sqlite3_stmt* stmt) {
     return true;
 }
 
+static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sqlite3_stmt* stmt) {
+    int ret = -1;
+    ret = sqlite3_bind_text(stmt, 1, filterResultElement.mDate.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind Date Fail: %s", filterResultElement.mDate.c_str());
+        return false;
+    }
+
+    ret = sqlite3_bind_int(stmt, 2, filterResultElement.mSaleVolume);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind SaleVolume Fail: %d", filterResultElement.mSaleVolume);
+        return false;
+    }
+
+    ret = sqlite3_bind_int(stmt, 3, filterResultElement.mBuyVolume);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind BuyVolume Fail: %d", filterResultElement.mBuyVolume);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 4, filterResultElement.mSaleTurnOver);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind SaleTurnOver Fail: %f", filterResultElement.mSaleTurnOver);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 5, filterResultElement.mBuyTurnOver);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mBuyTurnOver);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 6, filterResultElement.mSalePrice);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mSalePrice);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 7, filterResultElement.mBuyPrice);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mBuyPrice);
+        return false;
+    }
+
+    return true;
+}
+
 //static
 std::map<std::string, sqlite3*> DBWrapper::mDatabaseMap;
 
@@ -118,7 +165,7 @@ bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const 
       }
 
       default:
-        LOGE(LOGTAG, "Unknown Table type :%d \n", typeOfTable);
+        LOGI(LOGTAG, "Unknown Table type :%d \n", typeOfTable);
         return false;
     }
 
@@ -127,8 +174,8 @@ bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const 
 
     LOGI(LOGTAG, "targetDB:%p", targetDB);
     if (!targetDB && !openDB(DBName, &targetDB)) {
-        LOGE(LOGTAG, "Fail to get Database with name %s\n", DBName.c_str());
-        LOGE(LOGTAG, "And fail to open a new Database with name %s either\n", DBName.c_str());
+        LOGI(LOGTAG, "Fail to get Database with name %s\n", DBName.c_str());
+        LOGI(LOGTAG, "And fail to open a new Database with name %s either\n", DBName.c_str());
         return false;
     }
 
@@ -141,8 +188,8 @@ bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const 
             return true;
         }
 
-        LOGE(LOGTAG, "%s\n", sqlERR);
-        LOGE(LOGTAG, "Fail to open the table with name %s\n", tableName.c_str());
+        LOGI(LOGTAG, "%s\n", sqlERR);
+        LOGI(LOGTAG, "Fail to open the table with name %s\n", tableName.c_str());
         return false;
     }
 
@@ -156,7 +203,7 @@ bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::
 
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
-        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGI(LOGTAG, "%s\n", sqlERR);
         LOGI(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
@@ -186,7 +233,7 @@ bool DBWrapper::insertElementsInBatch(std::string& DBName,
     printf("DBWrapper:ret:%d\n", ret);
     if (ret != SQLITE_OK) {
         printf("DBWrapper:ret:%d\n", ret);
-        //LOGE
+        //LOGI
         return false;
     }
 
@@ -202,9 +249,51 @@ bool DBWrapper::insertElementsInBatch(std::string& DBName,
          sqlite3_reset(stmt);
          if (bindCommand(*itrOfValues, stmt) &&
              sqlite3_step(stmt) != SQLITE_DONE){
-             //LOGE
+             //LOGI
              return false;  
          }  
+    }
+    sqlite3_finalize(stmt);
+    endBatch(targetDB);
+
+    return true;
+}
+
+bool DBWrapper::insertFilterResultsInBatch(const std::string& DBName,
+                                           const std::string& tableName,
+                                           std::list<std::string>& strValues,
+                                           std::list<DBFilter::BaseResultData>& filterResultValues,
+                                           sqlite3_callback fCallback) {
+    sqlite3_stmt* stmt = NULL;
+    sqlite3* targetDB = getDBByName(DBName);
+
+    // The first description is the format of values to insert
+    std::string format = *(strValues.begin());
+    std::string sql = INSERT_OP + tableName + format;
+    LOGI(LOGTAG, "DBWrapper: sql:%s, targetDB:%p\n", sql.c_str(), targetDB);
+    int ret = sqlite3_prepare(targetDB,
+                              sql.c_str(),
+                              -1,
+                              &stmt,
+                              NULL);
+
+    LOGI(LOGTAG, "DBWrapper:ret:%d\n", ret);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt for sql:%s", sql.c_str());
+        return false;
+    }
+
+    beginBatch(targetDB);
+    std::list<DBFilter::BaseResultData>::iterator itrOfValues;
+    size_t listLen = filterResultValues.size();
+    size_t i = 0;
+    for (itrOfValues = filterResultValues.begin(); itrOfValues != filterResultValues.end(); itrOfValues++) {
+         sqlite3_reset(stmt);
+         if (bindCommand(*itrOfValues, stmt) &&
+             sqlite3_step(stmt) != SQLITE_DONE){
+             LOGI(LOGTAG, "Fail to insert filter results into table: %s in DB: %s", tableName.c_str(), DBName.c_str());
+             return false;
+         }
     }
     sqlite3_finalize(stmt);
     endBatch(targetDB);
@@ -219,7 +308,7 @@ bool DBWrapper::deleteElement(std::string& DBName, std::string& tableName, std::
 
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
-        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGI(LOGTAG, "%s\n", sqlERR);
         LOGI(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }
@@ -238,13 +327,13 @@ bool DBWrapper::joinTables(std::string& DBName, std::string& srcTableName, std::
 
     if (!DBWrapper::isTableExist(DBName, srcTableName) ||
         !DBWrapper::isTableExist(DBName, targetTableName)) {
-        LOGE(LOGTAG, "There is no table named %s or %s in Database %s\n", srcTableName.c_str(), targetTableName.c_str(), DBName.c_str());
+        LOGI(LOGTAG, "There is no table named %s or %s in Database %s\n", srcTableName.c_str(), targetTableName.c_str(), DBName.c_str());
         return false;
     }
 
     ret = sqlite3_exec(targetDB, sql.c_str(), *fCallback, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
-        LOGE(LOGTAG, "%s\n", sqlERR);
+        LOGI(LOGTAG, "%s\n", sqlERR);
         LOGI(LOGTAG, "Discription is: %s\n", sql.c_str());
         return false;
     }

@@ -172,7 +172,7 @@ bool DBFilter::getAllTablesOfDB(const std::string& aDBName) {
     return true;
 }
 
-bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::string& tableName) {
+bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::string& tmpTableName, const std::string& originTableName) {
     //FIXME:MiddleWare and it will be merged to other function
     //FIXME: the 'tableName" MUST same to mTmpResultTableName
     int ret = 0;
@@ -187,7 +187,7 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
 
     keyColumn += SALE_BUY;
 
-    sql = SUM_FILTER_RESULT_TABLE(tableName, columns, keyColumn);
+    sql = SUM_FILTER_RESULT_TABLE(tmpTableName, columns, keyColumn);
 
     ret = sqlite3_prepare(mOriginDB,
                           sql.c_str(),
@@ -227,13 +227,14 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
                 return false;
             }
         }
+        tempBaseResultData.mDate = originTableName;
 
         mBaseResultDatas.push_back(tempBaseResultData);
     }
 
     ret = sqlite3_finalize(stmt);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to finalize the stmt to finalize table:%s", tableName.c_str());
+        LOGI(LOGTAG, "Fail to finalize the stmt to finalize tmpTable:%s for originTable:%s", tmpTableName.c_str(), originTableName.c_str());
         return false;
     }
 
@@ -242,13 +243,41 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
 
 bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName) {
     //FIXME: the 'tableName" MUST same to mResultTableName
-    DBWrapper::openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, tableName);
-
     int ret = 0;
-    sqlite3_stmt* stmt = NULL;
-    std::string sql;
-    std::string columns("");
-    std::string keyColumn("");
+    if (!DBWrapper::openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, tableName)) {
+        LOGI(LOGTAG, "Fail to openTable: %s in DB: %s", tableName.c_str(), aDBName.c_str());
+        return false;
+    }
+
+    //Format DES
+    std::list<std::string> descriptions;
+    std::string singleDes;
+    singleDes = TABLE_FORMAT_FILTER_RESULT;
+    singleDes += D_STMT_FORMAT_FILTER_RESULT;
+    descriptions.push_back(singleDes);
+
+    //Result data DES
+    std::list<DBFilter::BaseResultData>::iterator iterOfFilterResult;
+
+    for (iterOfFilterResult = mBaseResultDatas.begin(); iterOfFilterResult != mBaseResultDatas.end(); iterOfFilterResult++) {
+        std::string values("");
+        values += "(";
+        values += (*iterOfFilterResult).mSaleVolume;
+        values += ", ";
+        values += (*iterOfFilterResult).mBuyVolume;
+        values += ", ";
+        values += (*iterOfFilterResult).mSaleTurnOver;
+        values += ", ";
+        values += (*iterOfFilterResult).mBuyTurnOver;
+        values += ", ";
+        values += (*iterOfFilterResult).mSalePrice;
+        values += ", ";
+        values += (*iterOfFilterResult).mBuyPrice;
+        values += ")";
+    }
+    
+
+    DBWrapper::insertFilterResultsInBatch(aDBName, tableName, descriptions, mBaseResultDatas, NULL);
 
     return true;
 }
@@ -346,7 +375,7 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
              }
 
              //Step 2: compute && save result 
-             if (!computeResultFromTable(aDBName, mTmpResultTableName)) {
+             if (!computeResultFromTable(aDBName, mTmpResultTableName, *iterOfTableName)) {
                  return false;
              }
 
@@ -360,6 +389,7 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
     if (!saveBaseResultInBatch(aDBName, mResultTableName)) {
         return false;
     }
+
     DBWrapper::closeDB(aDBName);
     return true;
 }

@@ -11,11 +11,17 @@
 #define TABLE_FORMAT_ORIGIN   " (Time, Price, Float, Volume,  TurnOver,  SaleBuy) "
 
 #define TABLE_FORMAT_FILTER_TURNOVER_DEF " (Volume, TurnOver, SaleBuy) "
-#define TABLE_FORMAT_FILTER_RESULT_DEF " (Date varchar(12), VolumeSale int, TurnOverSale double, PriceSale double, VolumeSale int, TurnOverBuy double, PriceBuy double) "
+
+#define TABLE_FORMAT_FILTER_RESULT_DEF " (Date varchar(12), VolumeSale int, TurnOverSale double, PriceSale double, VolumeBuy int, TurnOverBuy double, PriceBuy double) "
+#define TABLE_FORMAT_FILTER_RESULT " (Date, VolumeSale, TurnOverSale, PriceSale, VolumeBuy, TurnOverBuy, PriceBuy) "
+
 //default
 #define D_STMT_FORMAT_ORGIN   " VALUES (?, ?, ?, ?, ?, ?) "
+#define D_STMT_FORMAT_FILTER_RESULT " VALUES (?, ?, ?, ?, ?, ?, ?) "
+
 //spec
 #define S_STMT_FORMAT_ORGIN   " VALUES (:Time, :Price, :Float, :Volume, :TurnOver, :SaleBuy) "
+#define S_STMT_FORMAT_FILTER_RESULT " VALUES (:Time, :VolumeSale, :TurnOverSale, :PriceSale, :VolumeBuy, :TurnOverBuy, :PriceBuy) "
 
 #define BUY_IN_CHINESE  "买盘"
 #define SAL_IN_CHINESE  "卖盘"
