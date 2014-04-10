@@ -10,6 +10,7 @@
 
 #define LOGTAG   "DBFilter"
 #define DEFAULT_VALUE_FOR_INT -1
+#define MIN_TURNOVER 10
 
 #define VOLUME   " Volume "
 #define TURNOVER " TurnOver "
@@ -228,6 +229,22 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
             }
         }
         tempBaseResultData.mDate = originTableName;
+        tempBaseResultData.mPureFlowInOneDay = tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver;
+        LOGI(LOGTAG, "turnover: sale:%f, buy:%f, diff:%f", tempBaseResultData.mSaleTurnOver, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver);
+
+        // Figureout flowin in 10 days
+        int i = 0;
+        std::list<DBFilter::BaseResultData>::iterator itr;
+        for (i = 0, itr = mBaseResultDatas.end(); i < 10 && itr != mBaseResultDatas.begin(); itr--) {
+            //Only valueable days are counted on
+            if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+                LOGI(LOGTAG, "TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr).mPureFlowInOneDay)
+                //LOGI(LOGTAG, "Date:%s, mPureFlowInOneDay:%f", (*itr).mDate.c_str(), (*itr).mPureFlowInOneDay)
+                LOGI(LOGTAG, "tempBaseResultData.mSumFlowInTenDays:%f, mPureFlowInOneDay:%f", tempBaseResultData.mSumFlowInTenDays,  (*itr).mPureFlowInOneDay);
+                tempBaseResultData.mSumFlowInTenDays += (*itr).mPureFlowInOneDay;
+                i++;
+            }
+        }
 
         mBaseResultDatas.push_back(tempBaseResultData);
     }
@@ -273,6 +290,10 @@ bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::stri
         values += (*iterOfFilterResult).mSalePrice;
         values += ", ";
         values += (*iterOfFilterResult).mBuyPrice;
+        values += ", ";
+        values += (*iterOfFilterResult).mPureFlowInOneDay;
+        values += ", ";
+        values += (*iterOfFilterResult).mSumFlowInTenDays;
         values += ")";
     }
     

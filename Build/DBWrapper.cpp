@@ -92,6 +92,18 @@ static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sql
         return false;
     }
 
+    ret = sqlite3_bind_double(stmt, 8, filterResultElement.mPureFlowInOneDay);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind FlowInOneDay Fail: %f", filterResultElement.mPureFlowInOneDay);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 9, filterResultElement.mSumFlowInTenDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mSumFlowInTenDays);
+        return false;
+    }
+
     return true;
 }
 

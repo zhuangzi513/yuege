@@ -6,6 +6,8 @@
 #include <list>
 #include "sqlite3.h"
 
+#define MAX_COMPUTE_LEN 10
+
 /*
  * This class is used to filter the OriginDatbase and save the result
  * to another Database.
@@ -60,17 +62,21 @@ class DBFilter {
             , mSaleTurnOver(0.0)
             , mBuyTurnOver(0.0)
             , mSalePrice(0.0)
-            , mBuyPrice(0.0) {
+            , mBuyPrice(0.0)
+            , mPureFlowInOneDay(0.0)
+            , mSumFlowInTenDays(0.0) {
         }
 
         BaseResultData(const BaseResultData& baseResultData) {
-            mSaleVolume   = baseResultData.mSaleVolume;
-            mBuyVolume    = baseResultData.mBuyVolume;
-            mSaleTurnOver = baseResultData.mSaleTurnOver;
-            mBuyTurnOver  = baseResultData.mBuyTurnOver;
-            mSalePrice    = baseResultData.mSalePrice;
-            mBuyPrice     = baseResultData.mBuyPrice;
-            mDate         = baseResultData.mDate;
+            mSaleVolume       = baseResultData.mSaleVolume;
+            mBuyVolume        = baseResultData.mBuyVolume;
+            mSaleTurnOver     = baseResultData.mSaleTurnOver;
+            mBuyTurnOver      = baseResultData.mBuyTurnOver;
+            mSalePrice        = baseResultData.mSalePrice;
+            mBuyPrice         = baseResultData.mBuyPrice;
+            mPureFlowInOneDay = baseResultData.mPureFlowInOneDay;
+            mSumFlowInTenDays = baseResultData.mSumFlowInTenDays;
+            mDate             = baseResultData.mDate;
         }
       public:
         int mSaleVolume;
@@ -79,6 +85,8 @@ class DBFilter {
         double mBuyTurnOver;
         double mSalePrice;
         double mBuyPrice;
+        double mPureFlowInOneDay;
+        double mSumFlowInTenDays;
         std::string mDate;
     };
 
