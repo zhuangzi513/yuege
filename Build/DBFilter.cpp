@@ -203,28 +203,28 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
         //FIXME: The first raw is Buy, second raw is Sale
         BaseResultData tempBaseResultData;
         while(sqlite3_step(stmt) == SQLITE_ROW) {
-            std::string sale_buy("");
-            sale_buy = (char*)sqlite3_column_text(stmt, 2);
-            LOGI(LOGTAG, "%s", sale_buy.c_str());
+            std::string isBuy("");
+            isBuy= (char*)sqlite3_column_text(stmt, 2);
+            LOGI(LOGTAG, "%s", isBuy.c_str());
 
-            if (sale_buy == std::string("true")) {
-                tempBaseResultData.mSaleVolume   = sqlite3_column_int(stmt, 0);
-                tempBaseResultData.mSaleTurnOver = sqlite3_column_double(stmt, 1);
-                tempBaseResultData.mSalePrice    = (tempBaseResultData.mSaleTurnOver/(100 * tempBaseResultData.mSaleVolume));
-                LOGI(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mSaleVolume, tempBaseResultData.mSaleTurnOver, tempBaseResultData.mSalePrice);
-            } else if (sale_buy == std::string("false")) {
+            if (isBuy == std::string("true")) {
                 tempBaseResultData.mBuyVolume   = sqlite3_column_int(stmt, 0);
                 tempBaseResultData.mBuyTurnOver = sqlite3_column_double(stmt, 1);
-                tempBaseResultData.mBuyPrice    = (tempBaseResultData.mBuyTurnOver/(100 * tempBaseResultData.mBuyVolume));
+                tempBaseResultData.mBuyPrice    = (tempBaseResultData.mSaleTurnOver/(100 * tempBaseResultData.mSaleVolume));
+                LOGI(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mSaleVolume, tempBaseResultData.mSaleTurnOver, tempBaseResultData.mSalePrice);
+            } else if (isBuy == std::string("false")) {
+                tempBaseResultData.mSaleVolume   = sqlite3_column_int(stmt, 0);
+                tempBaseResultData.mSaleTurnOver = sqlite3_column_double(stmt, 1);
+                tempBaseResultData.mSalePrice    = (tempBaseResultData.mBuyTurnOver/(100 * tempBaseResultData.mBuyVolume));
                 LOGI(LOGTAG, "buy, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mBuyVolume, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyPrice);
             } else {
                 // Not buy, not sale, just a normal.
                 // The sale_buy should be empty
-                if (sale_buy.empty()) {
+                if (isBuy.empty()) {
                     LOGI(LOGTAG, "NON-BUY-SALE");
                     continue;
                 }
-                LOGI(LOGTAG, "%s", sale_buy.c_str());
+                LOGI(LOGTAG, "%s", isBuy.c_str());
                 return false;
             }
         }
@@ -232,9 +232,10 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
         tempBaseResultData.mPureFlowInOneDay = tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver;
         LOGI(LOGTAG, "turnover: sale:%f, buy:%f, diff:%f", tempBaseResultData.mSaleTurnOver, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver);
 
-        // Figureout flowin in 10 days
         int i = 0;
         std::list<DBFilter::BaseResultData>::iterator itr;
+
+        // Figureout flowin in 10 days
         for (i = 0, itr = mBaseResultDatas.end(); i < 10 && itr != mBaseResultDatas.begin(); itr--) {
             //Only valueable days are counted on
             if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
@@ -245,6 +246,24 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
                 i++;
             }
         }
+
+        //TODO: Optimization of Figurout flowin in 10 days
+        //if (mBaseResultDatas.size() > 10) {
+        //    for (i = 0, itr = mBaseResultDatas.end(); i < 10 && itr != mBaseResultDatas.begin(); itr--) {
+        //        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+        //            i++;
+        //        }
+        //    }
+        //        LOGI(LOGTAG, "end mSumFlowInTenDays:%f, 10 pre mSumFlowInTenDays:%f", (*mBaseResultDatas.end()).mSumFlowInTenDays,  (*itr).mSumFlowInTenDays);
+        //    tempBaseResultData.mSumFlowInTenDays = (*mBaseResultDatas.end()).mSumFlowInTenDays + ((*mBaseResultDatas.end()).mSumFlowInTenDays - (*itr).mSumFlowInTenDays);
+        //} else {
+        //    for (i = 0, itr = mBaseResultDatas.end(); i < 10 && itr != mBaseResultDatas.begin(); itr--) {
+        //        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+        //            tempBaseResultData.mSumFlowInTenDays += (*itr).mPureFlowInOneDay;
+        //            i++;
+        //        }
+        //    }
+        //}
 
         mBaseResultDatas.push_back(tempBaseResultData);
     }
