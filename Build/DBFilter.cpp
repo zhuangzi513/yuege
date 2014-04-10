@@ -12,9 +12,13 @@
 #define DEFAULT_VALUE_FOR_INT -1
 #define MIN_TURNOVER 10
 
-#define VOLUME   " Volume "
-#define TURNOVER " TurnOver "
-#define SALE_BUY " SaleBuy "
+#define DATE                "Date"
+#define VOLUME              " Volume "
+#define TURNOVER            " TurnOver "
+#define SALE_BUY            " SaleBuy "
+#define BEGIN_PRICE         "BeginPrice"
+#define END_PRICE           "EndPrice"
+#define SUM_FLOWIN_TEN_DAYS "SumFlowInTenDay"
 
 static char* sqlERR = NULL;
 
@@ -24,6 +28,14 @@ std::string DBFilter::mResultTableName         = "FilterResult";
 std::string DBFilter::mTmpResultTableName      = "MiddleWareTable";
 std::string DBFilter::mDiffBigBuySaleTableName = "";
 
+static std::string SELECT_COLUMNS(const std::string& tableName, const std::string& targetColumns) {
+    std::string command("");
+    command += " SELECT ";
+    command += targetColumns;
+    command += " FROM ";
+    command += tableName;
+    return command;
+}
 
 static std::string SELECT_TURNOVER_INTO(const std::string& srcTable,
                                         const std::string& targetTable,
@@ -116,6 +128,66 @@ bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aM
     return true;
 }
 
+bool DBFilter::getRecommandBuyDateRegions(const int lastingLen, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions) {
+    LOGI(LOGTAG, "Enter getRecommandBuyDateRegions, aDBName:%s", aDBName.c_str());
+    std::string sql, targetColumns;
+    sqlite3_stmt* stmt = NULL;
+    bool boolRet = false;
+    int intRet = -1;
+
+    boolRet = DBWrapper::openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName);
+    if (!boolRet) {
+        LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        return false;
+    }
+
+    targetColumns += "Date";
+    targetColumns += ", ";
+    targetColumns += SUM_FLOWIN_TEN_DAYS;
+    sql = SELECT_COLUMNS(mResultTableName, targetColumns);
+
+    LOGI(LOGTAG, "sql:%s", sql.c_str());
+    intRet = sqlite3_prepare(mOriginDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+
+    if (intRet != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt to Table:%s", mResultTableName.c_str());
+        return false;
+    }
+
+    DBFilter::DateRegion tmpDateRegion;
+    int count = 0;
+    bool startNewBlock = false;
+    std::string startDate, endDate;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        double sumFlowinTenDays = sqlite3_column_double(stmt, 1);
+        if (sumFlowinTenDays < 0) {
+            if (startNewBlock) {
+                //If NewBlock is started, then now it is time to end the block
+                startNewBlock = false;
+                endDate = (char*)sqlite3_column_text(stmt, 0);
+                tmpDateRegion.mStartDate = startDate;
+                tmpDateRegion.mEndDate   = endDate;
+                recommandBuyDateRegions.push_back(tmpDateRegion);
+                startDate = endDate = "";
+            }
+            count++;
+            continue;
+        }
+        if (sumFlowinTenDays > 0 && count >= lastingLen) {
+            //StartNewBlock
+            startNewBlock = true;
+            startDate = (char*)sqlite3_column_text(stmt, 0);
+            count = 0;
+        }
+    }
+
+    return true;
+}
+
 //=======private
 bool DBFilter::openOriginDB(const std::string& name) {
     return DBWrapper::openDB(name.c_str(), &mOriginDB);
@@ -173,7 +245,11 @@ bool DBFilter::getAllTablesOfDB(const std::string& aDBName) {
     return true;
 }
 
-bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::string& tmpTableName, const std::string& originTableName) {
+bool DBFilter::computeResultFromTable(const std::string& aDBName,
+                                      const std::string& tmpTableName,
+                                      const std::string& originTableName,
+                                      const double beginningPrice,
+                                      const double endingPrice) {
     //FIXME:MiddleWare and it will be merged to other function
     //FIXME: the 'tableName" MUST same to mTmpResultTableName
     int ret = 0;
@@ -265,6 +341,8 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName, const std::str
         //    }
         //}
 
+        tempBaseResultData.mBeginPrice = beginningPrice;
+        tempBaseResultData.mEndPrice   = endingPrice;
         mBaseResultDatas.push_back(tempBaseResultData);
     }
 
@@ -354,6 +432,46 @@ bool DBFilter::clearTable(const std::string& tableName) {
     return true;
 }
 
+bool DBFilter::getBeginAndEndPrice(const std::string& tableName, double& beginningPrice, double& endingPrice) {
+    int ret = -1;
+    std::string sql;
+    std::string targetColumns = " Price ";
+    sqlite3_stmt* stmt = NULL;
+
+    sql = SELECT_COLUMNS(tableName, targetColumns);
+    LOGI(LOGTAG, "getBeginAndEndPrice, sql:%s", sql.c_str());
+    ret = sqlite3_prepare(mOriginDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt to select end Price for table:%s", tableName.c_str());
+        return false;
+    }
+
+    int i = 0;
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        i++;
+        if (i == 2) {
+            endingPrice = sqlite3_column_double(stmt, 0);
+            LOGI(LOGTAG, "getBeginAndEndPrice, endPrice:%f", endingPrice);
+            continue;
+        }
+        beginningPrice = sqlite3_column_double(stmt, 0);    
+    }
+    LOGI(LOGTAG, "getBeginAndEndPrice, beginPrice:%f", beginningPrice);
+
+    ret = sqlite3_finalize(stmt);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to finalize the stmt to finalize table:%s", tableName.c_str());
+        return false;
+    }
+
+    return true;
+}
+
 bool DBFilter::filterTableByTurnOver(const std::string& tableName, const int aMinTurnOver) {
     LOGI(LOGTAG, "filterTableByTurnOver for table:%s", tableName.c_str());
     char strTurnOver[8] = {0};
@@ -406,16 +524,23 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
     //FIXME: Assuming that process all the tables in one DB and then the tables of the other DB.
     DBWrapper::openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mTmpResultTableName);
     std::list<std::string>::iterator iterOfTableName;
+    double beginningPrice, endingPrice;
     for (iterOfTableName = mTableNames.begin(); iterOfTableName != mTableNames.end(); iterOfTableName++) {
          if ((*iterOfTableName) != (mResultTableName) &&
              (*iterOfTableName) != (mTmpResultTableName)) {
-             //Step 1: filter
+             //Step 1: get Beginning & ending Price
+             beginningPrice = endingPrice = 0.0;
+             if (!getBeginAndEndPrice(*iterOfTableName, beginningPrice, endingPrice)) {
+                 return false;
+             }
+
+             //Step 2: filter
              if (!filterTableByTurnOver(*iterOfTableName, aMinTurnover)) {
                  return false;
              }
 
-             //Step 2: compute && save result 
-             if (!computeResultFromTable(aDBName, mTmpResultTableName, *iterOfTableName)) {
+             //Step 3: compute && save result 
+             if (!computeResultFromTable(aDBName, mTmpResultTableName, *iterOfTableName, beginningPrice, endingPrice)) {
                  return false;
              }
 
@@ -425,12 +550,100 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
          }
     }
 
-    ////Step 3: save to final result 
+    ////Step 4: save to final result 
     if (!saveBaseResultInBatch(aDBName, mResultTableName)) {
         return false;
     }
 
     DBWrapper::closeDB(aDBName);
+    return true;
+}
+
+//FIXME: the recommandBuyRegions should be of const
+bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyRegions) {
+    LOGI(LOGTAG, "Enter getHitRateOfBuying, aDBName:%s", aDBName.c_str());
+    std::string sql, targetColumns;
+    sqlite3_stmt* stmt = NULL;
+    bool boolRet = false;
+    int intRet = -1;
+
+    boolRet = DBWrapper::openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName);
+    if (!boolRet) {
+        LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        return false;
+    }
+
+    targetColumns += DATE;
+    targetColumns += ", ";
+    targetColumns += BEGIN_PRICE;
+    targetColumns += ", ";
+    targetColumns += END_PRICE;
+    sql = SELECT_COLUMNS(mResultTableName, targetColumns);
+
+    LOGI(LOGTAG, "sql:%s", sql.c_str());
+    intRet = sqlite3_prepare(mOriginDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+
+    if (intRet != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt to Table: %s, ret:%d", mResultTableName.c_str(), intRet);
+        return false;
+    }
+
+    int index = 0;
+    std::list<DBFilter::DateRegion>::iterator itr = recommandBuyRegions.begin();
+    std::list<DBFilter::PriceRegion> realPriceRegions;
+    DBFilter::PriceRegion tmpPriceRegion;
+
+    //Step 1: compare the Date
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        //NOTE: Assume that the recommandBuyRegions are ordered by date.
+        std::string date = (char*)sqlite3_column_text(stmt, 0);
+        if (date > (*itr).mStartDate) {
+            // have not reach the edge, need not to compare
+            continue;
+        } else if (date == (*itr).mStartDate) {
+            // record the beginningPrice
+            // once beggingPrice is set, a new block of region start.
+            // so clear the endPrice.
+            tmpPriceRegion.mBeginPrice = sqlite3_column_double(stmt, 1);
+            continue;
+        } else if (date == (*itr).mEndDate) {
+            // record the endPrice
+            tmpPriceRegion.mEndPrice = sqlite3_column_double(stmt, 2);
+            realPriceRegions.push_back(tmpPriceRegion);
+            itr++;
+        }
+    }
+
+    intRet = sqlite3_finalize(stmt);
+    if (intRet != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to finalize the stmt to finalize table:%s", mResultTableName.c_str());
+        return false;
+    }
+
+
+    //Step 2: ensure UP DOWN
+    if (realPriceRegions.size() != recommandBuyRegions.size()) {
+        LOGI(LOGTAG, "The size of PriceRegions does not equal to that of recommandBuyRegions");
+        return false;
+    }
+
+    double count = 0.0;
+    std::list<DBFilter::PriceRegion>::iterator itrOfPriceRegion = realPriceRegions.begin();
+    for (int i = 0; i < recommandBuyRegions.size(); i++) {
+        double diff = (*itrOfPriceRegion).mEndPrice - (*itrOfPriceRegion).mBeginPrice;
+        if (diff >= 0.01) {
+            count = count + 1.0;
+        }
+    }
+
+    //Step 3: compute HintRate
+    double hitRate = count/realPriceRegions.size();
+    LOGI(LOGTAG, "HitRate for Suggesting Buy:%f", hitRate);
+
     return true;
 }
 

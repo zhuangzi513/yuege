@@ -7,13 +7,22 @@ FILEWRAPPER_SRC:=\
     ../../FileWrapper/text/TextXLSReader.cpp \
     $(NULL)
 
+SEARCH_SRC:=\
+    ../../Search/Forecaster.cpp \
+    $(NULL)
+
 FILEWRAPPER_INCLUDE:=\
     -I../../FileWrapper      \
     -I../../FileWrapper/text \
     $(NULL)
 
 
+SEARCH_INCLUDE:=\
+    -I../../Search \
+    $(NULL)
+
 CPP_FLAG:=\
+    $(SEARCH_INCLUDE)        \
     $(FILEWRAPPER_INCLUDE)   \
     -I/usr/include/          \
     -I../                    \
@@ -26,6 +35,7 @@ CPP_FLAG+=\
 
 CPP_SRC:=\
     $(FILEWRAPPER_SRC)    \
+    $(SEARCH_SRC)         \
     main.cpp              \
     ../DBFilter.cpp       \
     ../DBWrapper.cpp      \

@@ -28,6 +28,9 @@
 
 class DBFilter {
   public:
+    class BaseResultData;
+    class DateRegion;
+    class PriceRegion;
     friend class DBSearcher;
 
     DBFilter();
@@ -38,6 +41,8 @@ class DBFilter {
      * into another database.
      */
     bool filterOriginDBByTurnOver(const std::string& aDBName, int aMinTurnover, int aMaxTurnover);
+    bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
+    bool getRecommandBuyDateRegions(const int lastingLen, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
 
   private:
     bool openOriginDB(const std::string& name);
@@ -48,8 +53,9 @@ class DBFilter {
     bool getAllTablesOfDB(const std::string& tableName);
 
     bool saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName);
-    bool computeResultFromTable(const std::string& aDBName, const std::string& tmpTableName, const std::string& originTableName);
+    bool computeResultFromTable(const std::string& aDBName, const std::string& tmpTableName, const std::string& originTableName, const double beginningPrice, const double endingPrice);
     bool clearTable(const std::string& tableName);
+    bool getBeginAndEndPrice(const std::string& tableName, double& beginningPrice, double& endingPrice);
     bool filterTableByTurnOver(const std::string& tableName, const int aMinTurnover);
     bool filterAllTablesByTurnOver(const std::string& tableName, const int aMinTurnover);
 
@@ -63,6 +69,8 @@ class DBFilter {
             , mBuyTurnOver(0.0)
             , mSalePrice(0.0)
             , mBuyPrice(0.0)
+            , mEndPrice(0.0)
+            , mBeginPrice(0.0)
             , mPureFlowInOneDay(0.0)
             , mSumFlowInTenDays(0.0) {
         }
@@ -74,10 +82,13 @@ class DBFilter {
             mBuyTurnOver      = baseResultData.mBuyTurnOver;
             mSalePrice        = baseResultData.mSalePrice;
             mBuyPrice         = baseResultData.mBuyPrice;
+            mBeginPrice       = baseResultData.mBeginPrice;
+            mEndPrice         = baseResultData.mEndPrice;
             mPureFlowInOneDay = baseResultData.mPureFlowInOneDay;
             mSumFlowInTenDays = baseResultData.mSumFlowInTenDays;
             mDate             = baseResultData.mDate;
         }
+
       public:
         int mSaleVolume;
         int mBuyVolume;
@@ -85,9 +96,45 @@ class DBFilter {
         double mBuyTurnOver;
         double mSalePrice;
         double mBuyPrice;
+        double mBeginPrice;
+        double mEndPrice;
         double mPureFlowInOneDay;
         double mSumFlowInTenDays;
         std::string mDate;
+    };
+
+    class DateRegion {
+      public:
+        DateRegion()
+            : mStartDate("")
+            , mEndDate("") {
+        }
+
+        DateRegion(const DateRegion& dateRegion) {
+            mStartDate = dateRegion.mStartDate;
+            mEndDate   = dateRegion.mEndDate;
+        }
+
+      public:
+        std::string mStartDate;
+        std::string mEndDate;
+    };
+
+    class PriceRegion {
+      public:
+        PriceRegion()
+            : mBeginPrice(0.0)
+            , mEndPrice(0.0) {
+        }
+
+        PriceRegion(const PriceRegion& priceRegion) {
+            mBeginPrice = priceRegion.mBeginPrice;
+            mEndPrice   = priceRegion.mEndPrice;
+        }
+      
+      public:
+        double mBeginPrice;
+        double mEndPrice;
     };
 
     std::list<BaseResultData> mBaseResultDatas;

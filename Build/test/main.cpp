@@ -1,4 +1,5 @@
 
+#include "Forecaster.h"
 #include "OriginDBHelper.h"
 #include "DBFilter.h"
 #include "sqlite3.h"
@@ -38,8 +39,10 @@ bool createOriginDB(const std::string& fileName)
 }
 
 bool filterOriginDB(const std::string& fileName) {
-    DBFilter *pDBFilter = new DBFilter();
-    pDBFilter->filterOriginDBByTurnOver(fileName, 100, 1000);
+    //DBFilter *pDBFilter = new DBFilter();
+    //pDBFilter->filterOriginDBByTurnOver(fileName, 100, 1000);
+    Forecaster* pForecaster = new Forecaster();
+    pForecaster->forecasteThroughTurnOver(fileName);
     return true;
 }
 

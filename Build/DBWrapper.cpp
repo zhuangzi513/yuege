@@ -104,6 +104,18 @@ static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sql
         return false;
     }
 
+    ret = sqlite3_bind_double(stmt, 10, filterResultElement.mBeginPrice);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mBeginPrice);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 11, filterResultElement.mEndPrice);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mEndPrice);
+        return false;
+    }
+
     return true;
 }
 
