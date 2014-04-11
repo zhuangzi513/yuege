@@ -8,11 +8,11 @@ Forecaster::~Forecaster() {
 }
 
 bool Forecaster::forecasteThroughTurnOver(const std::string& aDBName) {
-    DBFilter *pDBFilter = new DBFilter();
-    pDBFilter->filterOriginDBByTurnOver(aDBName, 100, 1000);
+    DBFilter *pDBFilter = new DBFilter(aDBName);
+    pDBFilter->filterOriginDBByTurnOver(aDBName, 50000, 100000);
 
     std::list<DBFilter::DateRegion> recommandBuyDateRegions;
-    pDBFilter->getRecommandBuyDateRegions(4, aDBName, recommandBuyDateRegions);
+    pDBFilter->getRecommandBuyDateRegions(DBFilter::CONTINUE_FLOWIN_PRI, aDBName, recommandBuyDateRegions);
     pDBFilter->getHitRateOfBuying(aDBName, recommandBuyDateRegions);
     return true;
 }

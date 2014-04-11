@@ -33,7 +33,12 @@ class DBFilter {
     class PriceRegion;
     friend class DBSearcher;
 
-    DBFilter();
+    enum {
+      CONTINUE_FLOWIN,
+      CONTINUE_FLOWIN_PRI
+    };
+
+    DBFilter(const std::string& aDBName);
     ~DBFilter();
 
     /*
@@ -42,11 +47,15 @@ class DBFilter {
      */
     bool filterOriginDBByTurnOver(const std::string& aDBName, int aMinTurnover, int aMaxTurnover);
     bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
-    bool getRecommandBuyDateRegions(const int lastingLen, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    static bool getGlobalHitRate(double& hitRate);
+    bool getRecommandBuyDateRegions(const int throughWhat, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
 
   private:
+    bool getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    bool getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
     bool openOriginDB(const std::string& name);
     bool closeOriginDB(const std::string& name);
+    bool openTable(int index, const std::string& aDBName, const std::string& aTableName);
     sqlite3* getDBByName(const std::string& DBName);
     bool isTableExist(const std::string& DBName, const std::string& tableName);
 
@@ -138,7 +147,7 @@ class DBFilter {
     };
 
     std::list<BaseResultData> mBaseResultDatas;
-    static sqlite3* mOriginDB;
+    sqlite3* mOriginDB;
     static std::list<std::string> mTableNames;
     static std::string mResultTableName;
     static std::string mTmpResultTableName;
