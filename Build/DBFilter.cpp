@@ -411,13 +411,13 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName,
             if (isBuy == std::string("true")) {
                 tempBaseResultData.mBuyVolume   = sqlite3_column_int(stmt, 0);
                 tempBaseResultData.mBuyTurnOver = sqlite3_column_double(stmt, 1);
-                tempBaseResultData.mBuyPrice    = (tempBaseResultData.mSaleTurnOver/(100 * tempBaseResultData.mSaleVolume));
-                LOGD(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mSaleVolume, tempBaseResultData.mSaleTurnOver, tempBaseResultData.mSalePrice);
+                tempBaseResultData.mBuyPrice    = (tempBaseResultData.mBuyTurnOver/(100 * tempBaseResultData.mBuyVolume));
+                LOGD(LOGTAG, "sale, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mBuyVolume, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyPrice);
             } else if (isBuy == std::string("false")) {
                 tempBaseResultData.mSaleVolume   = sqlite3_column_int(stmt, 0);
                 tempBaseResultData.mSaleTurnOver = sqlite3_column_double(stmt, 1);
-                tempBaseResultData.mSalePrice    = (tempBaseResultData.mBuyTurnOver/(100 * tempBaseResultData.mBuyVolume));
-                LOGD(LOGTAG, "buy, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mBuyVolume, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyPrice);
+                tempBaseResultData.mSalePrice    = (tempBaseResultData.mSaleTurnOver/(100 * tempBaseResultData.mSaleVolume));
+                LOGD(LOGTAG, "buy, volume:%d, turnover:%f, avg:%f", tempBaseResultData.mSaleVolume, tempBaseResultData.mSaleTurnOver, tempBaseResultData.mSalePrice);
             } else {
                 // Not buy, not sale, just a normal.
                 // The sale_buy should be empty
