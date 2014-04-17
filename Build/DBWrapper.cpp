@@ -62,27 +62,27 @@ static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sql
         return false;
     }
 
-    ret = sqlite3_bind_int(stmt, 3, filterResultElement.mBuyVolume);
-    if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind BuyVolume Fail: %d", filterResultElement.mBuyVolume);
-        return false;
-    }
-
-    ret = sqlite3_bind_double(stmt, 4, filterResultElement.mSaleTurnOver);
+    ret = sqlite3_bind_double(stmt, 3, filterResultElement.mSaleTurnOver);
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind SaleTurnOver Fail: %f", filterResultElement.mSaleTurnOver);
         return false;
     }
 
-    ret = sqlite3_bind_double(stmt, 5, filterResultElement.mBuyTurnOver);
+    ret = sqlite3_bind_double(stmt, 4, filterResultElement.mSalePrice);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mBuyTurnOver);
+        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mSalePrice);
         return false;
     }
 
-    ret = sqlite3_bind_double(stmt, 6, filterResultElement.mSalePrice);
+    ret = sqlite3_bind_int(stmt, 5, filterResultElement.mBuyVolume);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mSalePrice);
+        LOGI(LOGTAG, "bind BuyVolume Fail: %d", filterResultElement.mBuyVolume);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 6, filterResultElement.mBuyTurnOver);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind BuyTurnOver Fail: %f", filterResultElement.mBuyTurnOver);
         return false;
     }
 

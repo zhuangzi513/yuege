@@ -13,6 +13,8 @@ class Forecaster {
     // Filter the details through TurnOver and compute the HintRate
     bool forecasteThroughTurnOver(const std::string& aDBName);
 
+    bool forecasteFromFirstPositiveFlowin(const std::string& aDBName);
+
   private:
 };
 

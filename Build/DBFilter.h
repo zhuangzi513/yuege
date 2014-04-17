@@ -35,7 +35,8 @@ class DBFilter {
 
     enum {
       CONTINUE_FLOWIN,
-      CONTINUE_FLOWIN_PRI
+      CONTINUE_FLOWIN_PRI,
+      CONTINUE_FLOWIN_FROM_FIRST_POSITIVE
     };
 
     DBFilter(const std::string& aDBName);
@@ -53,6 +54,7 @@ class DBFilter {
   private:
     bool getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
     bool getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    bool getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
     bool openOriginDB(const std::string& name);
     bool closeOriginDB(const std::string& name);
     bool openTable(int index, const std::string& aDBName, const std::string& aTableName);
