@@ -107,10 +107,10 @@ bool createOriginDBForDir(const std::string& dirName) {
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   createOriginDBForDir("details");
-   //filterOriginDB();
-   //double hintRate = 0.0;
-   //DBFilter::getGlobalHitRate(hintRate);
+   //createOriginDBForDir("details");
+   filterOriginDB();
+   double hintRate = 0.0;
+   DBFilter::getGlobalHitRate(hintRate);
    printf("\n\n\n=================Global Hint Rate:%f\n\n\n", hintRate);
    return 1;
 }

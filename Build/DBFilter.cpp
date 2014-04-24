@@ -28,6 +28,7 @@
 static char* sqlERR = NULL;
 static double sumShots   = 0.0;
 static double sumForcasters = 0.0;
+static double sumIncome = 0.0;
 
 static std::list<double> sPre15Flowins;
 
@@ -288,6 +289,47 @@ bool DBFilter::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, st
     return true;
 }
 
+static double sumFlowinSinceBeginningDay;
+static double sumFlowoutSinceBeginningDay;
+static std::string lastCountedDate;
+
+static void countInTurnOver(const std::string& date, bool reset, double flowinOneDay = 0, double flowoutOneDay = 0) {
+    LOGI(LOGTAG, "BEFORE  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+    if (lastCountedDate == date) {
+        return;
+    }
+    if (!reset) {
+        sumFlowinSinceBeginningDay  += flowinOneDay;
+        sumFlowoutSinceBeginningDay += flowoutOneDay;
+    } else {
+        sumFlowinSinceBeginningDay  = 0;
+        sumFlowoutSinceBeginningDay = 0;
+    }
+    lastCountedDate = date;
+    LOGI(LOGTAG, "AFTER  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+}
+
+static bool shouldSaleOut(double flowinOneDay, double flowoutOneDay) {
+    sumFlowinSinceBeginningDay  += flowinOneDay;
+    sumFlowoutSinceBeginningDay += flowoutOneDay;
+
+    LOGI(LOGTAG, "=====================================================sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+    if (sumFlowoutSinceBeginningDay > sumFlowinSinceBeginningDay * 0.75) {
+        LOGD(LOGTAG, "##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+        sumFlowoutSinceBeginningDay = sumFlowinSinceBeginningDay = 0;
+        return true;
+    }
+    return false;
+}
+
+static bool shouldBuyInNow() {
+    if ((sumFlowinSinceBeginningDay > MIN_TURNOVER) &&
+        (sumFlowoutSinceBeginningDay > MIN_TURNOVER)) {
+        return sumFlowinSinceBeginningDay > (2 * sumFlowoutSinceBeginningDay);
+    }
+    return false;
+}
+
 bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions) {
     std::string sql, targetColumns;
     sqlite3_stmt* stmt = NULL;
@@ -347,7 +389,6 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
 
         LOGD(LOGTAG, "aDBName:%s, Date:%s, TurnoverSale:%f, TurnoverBuy:%f, flowinOneDay:%f, beginPrice:%f, endPrice:%f",
                       aDBName.c_str(), date.c_str(), turnoverSale, turnoverBuy, flowinOneDay, beginPrice, endPrice);
-
         //Step 1: find the starting day: there has been DEFAULT_LASTING_LEN days whose flowinOneDay is positive
         if (flowinOneDay > MIN_TURNOVER && !newBuySaleBlockStarted) {
             if (!newContiniousBlockStarted) {
@@ -359,15 +400,20 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
             // which means we still want lastingDays to graw up
             // Else it is time to check other contidions
             if (lastingDays < DEFAULT_LASTING_LEN) {
+                countInTurnOver(date, false, turnoverBuy, turnoverSale);
                 //compute the days whose flowinOneDay/turnoverSale > 30%
-                if ((flowinOneDay/turnoverSale) > 0.3) {
-                    LOGD(LOGTAG, "Meet the contition to start counting:DBName:%s, date:%s, flowinOneDay:%f, turnoverSale:%f", flowinOneDay, turnoverSale, aDBName.c_str(), date.c_str());
+                if ((flowinOneDay/turnoverSale) > 0.5) {
+                    LOGI(LOGTAG, "Meet the contition to start counting:DBName:%s, date:%s, flowinOneDay:%f, turnoverSale:%f", flowinOneDay, turnoverSale, aDBName.c_str(), date.c_str());
                     count++;
                 }
-                continue;
+                //If we decide to buy it now through SumFlowin/out, then do it.
+                if (!shouldBuyInNow()) {
+                    continue;
+                }
             }
         } else if ((flowinOneDay < -MIN_TURNOVER) && !newBuySaleBlockStarted) {
             // reset the count & lastingDays & beginPrice
+            countInTurnOver(date, true);
             count = lastingDays = 0;
             newContiniousBlockStarted = false;
             tmpDateRegion.mStartDate = tmpDateRegion.mEndDate = "";
@@ -375,9 +421,10 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
         }
 
         //Step 2: check whether the Turnover & Price meets our need
-        if (newContiniousBlockStarted && lastingDays >= DEFAULT_LASTING_LEN) {
-            if ((count > (DEFAULT_LASTING_LEN / 2)) &&
-                ((endPrice - startPrice) / startPrice) < 0.1) {
+        if (newContiniousBlockStarted &&
+            (lastingDays >= DEFAULT_LASTING_LEN || (shouldBuyInNow() && lastingDays >= 1))) {
+            countInTurnOver(date, false, turnoverBuy, turnoverSale);
+            if (count >= (DEFAULT_LASTING_LEN / 2)) {
                 LOGI(LOGTAG, "Meet the contition to start the newBuySaleBlockStarted, DBName:%s, date:%s", aDBName.c_str(), date.c_str());
                 newBuySaleBlockStarted = true;
                 tmpDateRegion.mStartDate = date;
@@ -387,10 +434,12 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
         }
 
         //Step 3: get the dateNO on which we should sale it.
-        if (newBuySaleBlockStarted && newBuySaleBlockStarted) {
+        if (newBuySaleBlockStarted && newBuySaleBlockStarted
+            && ((flowinOneDay > MIN_TURNOVER) || (flowinOneDay < -MIN_TURNOVER))) {
             //FIXME:compute the sale-date, 
             //TODO: Needs more complicated Algorithm to determine when to sale it
-            if (flowinOneDay / turnoverSale < 0.1) {
+            //if (flowinOneDay / turnoverSale < 0.1) {
+            if (shouldSaleOut(turnoverBuy, turnoverSale)) {
                 tmpDateRegion.mEndDate = date;
                 LOGI(LOGTAG, "Meet the contition to end the newBuySaleBlockStarted, DBName:%s, date:%s", aDBName.c_str(), date.c_str());
                 recommandBuyDateRegions.push_back(tmpDateRegion);
@@ -847,10 +896,10 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
     std::list<DBFilter::PriceRegion> realPriceRegions;
     DBFilter::PriceRegion tmpPriceRegion;
 
-    std::list<DBFilter::DateRegion>::iterator debugItr = recommandBuyRegions.begin();
-    while (debugItr != recommandBuyRegions.end()) {
-        LOGI(LOGTAG, "mStartDate in recommandRegions:%s, mEndDate:%s", (*debugItr).mStartDate.c_str(), (*debugItr).mEndDate.c_str());
-        debugItr++;
+    std::list<DBFilter::DateRegion>::iterator debugDateRegionItr = recommandBuyRegions.begin();
+    while (debugDateRegionItr != recommandBuyRegions.end()) {
+        LOGD(LOGTAG, "mStartDate in recommandRegions:%s, mEndDate:%s", (*debugDateRegionItr).mStartDate.c_str(), (*debugDateRegionItr).mEndDate.c_str());
+        debugDateRegionItr++;
     }
 
     //Step 1: compare the Date
@@ -864,14 +913,14 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
             // record the beginningPrice
             // once beggingPrice is set, a new block of region start.
             // so clear the endPrice.
-            LOGI(LOGTAG, "Find the the startDate in recommandRegions:%s", date.c_str());
+            LOGD(LOGTAG, "Find the the startDate in recommandRegions:%s", date.c_str());
             tmpPriceRegion.mBeginPrice = sqlite3_column_double(stmt, 1);
             continue;
         } else if (date == (*itr).mEndDate) {
             // record the endPrice
-            LOGI(LOGTAG, "Find the the EndDate in recommandRegions:%s", date.c_str());
+            LOGD(LOGTAG, "Find the the EndDate in recommandRegions:%s", date.c_str());
             tmpPriceRegion.mEndPrice = sqlite3_column_double(stmt, 2);
-            LOGI(LOGTAG, "the EndPrice:%f , the BeginPrice:%f in tmpPriceRegion:%f", tmpPriceRegion.mEndPrice, tmpPriceRegion.mBeginPrice);
+            LOGD(LOGTAG, "the EndPrice:%f , the BeginPrice:%f in tmpPriceRegion:%f", tmpPriceRegion.mEndPrice, tmpPriceRegion.mBeginPrice);
             realPriceRegions.push_back(tmpPriceRegion);
             itr++;
         } else {
@@ -888,26 +937,29 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
 
     //Step 2: ensure UP DOWN
     if (realPriceRegions.size() != recommandBuyRegions.size()) {
-        LOGI(LOGTAG, "The size of PriceRegions does not equal to that of recommandBuyRegions");
-        LOGI(LOGTAG, "realPriceRegions length:%d, recommandBuyRegions:%d", realPriceRegions.size(), recommandBuyRegions.size());
+        LOGI(LOGTAG, "The size of PriceRegions does not equal to that of recommandBuyRegions"); LOGI(LOGTAG, "realPriceRegions length:%d, recommandBuyRegions:%d", realPriceRegions.size(), recommandBuyRegions.size());
         return false;
     }
 
     std::list<DBFilter::PriceRegion>::iterator debugPriceRegionItr = realPriceRegions.begin();
+    debugDateRegionItr = recommandBuyRegions.begin();
     while (debugPriceRegionItr!= realPriceRegions.end()) {
-        LOGI(LOGTAG, "mStartDate in PriceRegions mBeginPrice:%f, mEndPrice:%f", (*debugPriceRegionItr).mBeginPrice, (*debugPriceRegionItr).mEndPrice);
+        LOGD(LOGTAG, "mStartDate in PriceRegions mBeginPrice:%f, mEndPrice:%f", (*debugPriceRegionItr).mBeginPrice, (*debugPriceRegionItr).mEndPrice);
         debugPriceRegionItr++;
     }
 
     double count = 0.0;
     std::list<DBFilter::PriceRegion>::iterator itrOfPriceRegion = realPriceRegions.begin();
-    for (int i = 0; i < realPriceRegions.size(); i++) {
+    debugDateRegionItr = recommandBuyRegions.begin();
+    for (int i = 0; i < realPriceRegions.size(); i++, debugDateRegionItr++) {
         double diff = (*itrOfPriceRegion).mEndPrice - (*itrOfPriceRegion).mBeginPrice;
         if (diff >= 0.01) {
             count = count + 1.0;
         }
+        sumIncome = sumIncome + (diff / (*itrOfPriceRegion).mBeginPrice);
+        LOGI(LOGTAG, "dbname:%s, begindate:%s, enddate:%s", aDBName.c_str(), (*debugDateRegionItr).mStartDate.c_str(), (*debugDateRegionItr).mEndDate.c_str());
+        LOGI(LOGTAG, "beginPrice:%f, endPrice:%f, diff:%f, sumIncome:%f ", (*itrOfPriceRegion).mBeginPrice, (*itrOfPriceRegion).mEndPrice, diff, sumIncome);
         itrOfPriceRegion++;
-        LOGI(LOGTAG, "diff:%f, count:%f", diff, count);
     }
 
     sumShots += count;
@@ -916,14 +968,15 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
     //Step 3: compute HintRate
     double hitRate = count/realPriceRegions.size();
     LOGI(LOGTAG, "HitRate for Suggesting Buy:%f, shot count:%f, sum count:%d", hitRate, count, realPriceRegions.size());
-    LOGI(LOGTAG, "\n\n======sum of reallly HitShots:%f, sum of Forcasters:%f, hitRate:%f\n\n", sumShots, sumForcasters, hitRate);
+    LOGI(LOGTAG, "\n\n======sum of reallly HitShots:%f, sum of Forcasters:%f, hitRate:%f, sumIncome:%f\n\n", sumShots, sumForcasters, hitRate, sumIncome);
 
     return true;
 }
 
 bool DBFilter::getGlobalHitRate(double& hitRate) {
     hitRate = sumShots/sumForcasters;
-    LOGI(LOGTAG, "\n\n======sum of reallly HitShots:%f, sum of Forcasters:%f, hitRate:%f\n\n", sumShots, sumForcasters, hitRate);
+    double globaleIncome = sumIncome / sumForcasters;
+    LOGI(LOGTAG, "\n\n======sum of reallly HitShots:%f, sum of Forcasters:%f, hitRate:%f, globaleIncome:%f\n\n", sumShots, sumForcasters, hitRate, globaleIncome);
     return true;
 }
 
