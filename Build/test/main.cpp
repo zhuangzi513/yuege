@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <vector>
 
+#include <errno.h>
+
 #define EXAMPLE_XLS_NAME "600001/2013/0101.xls"
 
 int searchCallback(void *arg1, int arg2, char **arg3, char **arg4) {
@@ -44,7 +46,8 @@ bool createOriginDB(const std::string& fileName)
 }
 
 void getAllDatabase(std::vector<std::string>& fileNames) {
-    std::string currentDir("./");
+    std::string currentDir("dbs");
+    std::string fullName;
     struct dirent* pDirent = NULL;
     struct stat s;
     DIR* pDir = NULL;
@@ -58,6 +61,7 @@ void getAllDatabase(std::vector<std::string>& fileNames) {
     }
 
     while (true) {
+        fullName = currentDir;
         pDirent = readdir(pDir);
         if (pDirent != NULL) {
             if ((strcmp((const char*)pDirent->d_name, ".") == 0) ||
@@ -66,15 +70,30 @@ void getAllDatabase(std::vector<std::string>& fileNames) {
             }
 
             childName = pDirent->d_name;
-            if (lstat(childName.c_str(), &s) == -1) {
+
+            fullName += "/";
+            fullName += childName;
+            
+            if (lstat(fullName.c_str(), &s) == -1) {
                 continue;
             }
 
             if (S_ISREG(s.st_mode)) {
                 if (childName.find_first_of(".db") == 6) {
                     printf( "find file named:%s, first '.db':%d \n", childName.c_str(), childName.find_first_of(".db"));
-                    fileNames.push_back(childName);
+                    fileNames.push_back(fullName);
                 }
+            } else if (S_ISLNK(s.st_mode)) {
+                printf( "find file named:%s, LINK\n", childName.c_str());
+            } else if (S_ISBLK(s.st_mode)) {
+                printf( "find file named:%s, BLK\n", childName.c_str());
+            } else if (S_ISFIFO(s.st_mode)) {
+                printf( "find file named:%s, FIFO\n", childName.c_str());
+            } else if (S_ISSOCK(s.st_mode)) {
+                printf( "find file named:%s, SOCKET\n", childName.c_str());
+            } else {
+                printf( "find file named:%s, unkown\n", childName.c_str());
+                break;
             }
         } else {
             printf( "Error Fail to readdir from:%s\n", currentDir.c_str());
@@ -92,7 +111,8 @@ bool filterOriginDB() {
     getAllDatabase(fileNames);
     Forecaster* pForecaster = new Forecaster();
     for (int i = 0; i < fileNames.size(); i++) {
-        pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+        printf("fileNames:%s", fileNames[i].c_str());
     }
     return true;
 }
