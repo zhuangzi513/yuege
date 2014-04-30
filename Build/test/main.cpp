@@ -93,7 +93,7 @@ void getAllDatabase(std::vector<std::string>& fileNames) {
                 printf( "find file named:%s, SOCKET\n", childName.c_str());
             } else {
                 printf( "find file named:%s, unkown\n", childName.c_str());
-                break;
+                continue;
             }
         } else {
             printf( "Error Fail to readdir from:%s\n", currentDir.c_str());
