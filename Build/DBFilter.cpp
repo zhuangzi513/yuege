@@ -103,32 +103,33 @@ static std::string GET_TABLES() {
     return command;
 }
 
-DBFilter::DBFilter(const std::string& aDBName) {
+DBFilter::DBFilter(const std::string& aDBName)
+        : mDBName(aDBName) {
     openOriginDB(aDBName);
 }
 
 DBFilter::~DBFilter() {
-    if (mOriginDB) {
-        delete mOriginDB;
-        mOriginDB = NULL;
-    }
+    closeOriginDB(mDBName);
 }
 
 bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnOver) {
     LOGI(LOGTAG, "DBName:%s", aDBName.c_str());
     if (!openOriginDB(aDBName)) {
+        closeOriginDB(aDBName);
         LOGI(LOGTAG, "Fail to open db:%s", aDBName.c_str());
         return false;
     }
 
     //Step 1: get all the tables in the OriginDB
     if (!getAllTablesOfDB(aDBName)) {
+        closeOriginDB(aDBName);
         LOGI(LOGTAG, "Failt to get tables from :%s", aDBName.c_str());
         return false;
     }
 
     //Step 2: Filter all the tables of the OriginDB and save them in a 'tmp table'
     if (!filterAllTablesByTurnOver(aDBName, aMinTurnover)) {
+        closeOriginDB(aDBName);
         LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
         return false;
     }
@@ -146,6 +147,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::
     boolRet = openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName);
     if (!boolRet) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -165,6 +167,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::
 
     if (intRet != SQLITE_OK) {
         LOGI(LOGTAG, "Fail to prepare stmt to Table:%s", mResultTableName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -200,6 +203,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::
 
     }
 
+    closeOriginDB(aDBName);
     return true;
 }
 
@@ -223,6 +227,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, st
     boolRet = openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName);
     if (!boolRet) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -242,6 +247,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, st
 
     if (intRet != SQLITE_OK) {
         LOGI(LOGTAG, "Fail to prepare stmt to Table:%s", mResultTableName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -286,6 +292,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, st
 
     }
 
+    closeOriginDB(aDBName);
     return true;
 }
 
@@ -294,7 +301,7 @@ static double sumFlowoutSinceBeginningDay;
 static std::string lastCountedDate;
 
 static void countInTurnOver(const std::string& date, bool reset, double flowinOneDay = 0, double flowoutOneDay = 0) {
-    LOGI(LOGTAG, "BEFORE  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+    LOGD(LOGTAG, "BEFORE  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
     if (lastCountedDate == date) {
         return;
     }
@@ -306,14 +313,14 @@ static void countInTurnOver(const std::string& date, bool reset, double flowinOn
         sumFlowoutSinceBeginningDay = 0;
     }
     lastCountedDate = date;
-    LOGI(LOGTAG, "AFTER  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+    LOGD(LOGTAG, "AFTER  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
 }
 
 static bool shouldSaleOut(double flowinOneDay, double flowoutOneDay) {
     sumFlowinSinceBeginningDay  += flowinOneDay;
     sumFlowoutSinceBeginningDay += flowoutOneDay;
 
-    LOGI(LOGTAG, "=====================================================sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
+    LOGD(LOGTAG, "=====================================================sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
     if (sumFlowoutSinceBeginningDay > sumFlowinSinceBeginningDay * 0.75) {
         LOGD(LOGTAG, "##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
         sumFlowoutSinceBeginningDay = sumFlowinSinceBeginningDay = 0;
@@ -339,6 +346,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
     boolRet = openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName);
     if (!boolRet) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -363,7 +371,9 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
                           NULL);
 
     if (intRet != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt to Table:%s", mResultTableName.c_str());
+        LOGI(LOGTAG, "Fail to prepare stmt to Table:%s, errno:%d", mResultTableName.c_str(), errno);
+        closeOriginDB(aDBName);
+        exit(1);
         return false;
     }
 
@@ -403,7 +413,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
                 countInTurnOver(date, false, turnoverBuy, turnoverSale);
                 //compute the days whose flowinOneDay/turnoverSale > 30%
                 if ((flowinOneDay/turnoverSale) > 0.5) {
-                    LOGI(LOGTAG, "Meet the contition to start counting:DBName:%s, date:%s, flowinOneDay:%f, turnoverSale:%f", flowinOneDay, turnoverSale, aDBName.c_str(), date.c_str());
+                    LOGI(LOGTAG, "Meet the contition to start counting:flowinOneDay:%f, turnoverSale:%f, DBName:%s, date:%s", flowinOneDay, turnoverSale, aDBName.c_str(), date.c_str());
                     count++;
                 }
                 //If we decide to buy it now through SumFlowin/out, then do it.
@@ -450,8 +460,13 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
             }
         }
     }
+    if (SQLITE_OK != sqlite3_finalize(stmt)) {
+        LOGI(LOGTAG, "Fail to finalize stmt in getBuyDateRegionsContinueFlowinFFP aDBName:%s", aDBName.c_str());
+        closeOriginDB(aDBName);
+        return false;
+    }
 
-
+    closeOriginDB(aDBName);
     return true;
 }
 
@@ -657,6 +672,7 @@ bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::stri
     int ret = 0;
     if (!openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, tableName)) {
         LOGI(LOGTAG, "Fail to openTable: %s in DB: %s", tableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -694,6 +710,7 @@ bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::stri
 
     DBWrapper::insertFilterResultsInBatch(aDBName, tableName, descriptions, mBaseResultDatas, NULL);
 
+    closeOriginDB(aDBName);
     return true;
 }
 
@@ -821,6 +838,7 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
     //FIXME: Assuming that process all the tables in one DB and then the tables of the other DB.
     if (!openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mTmpResultTableName)) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mTmpResultTableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
     std::list<std::string>::iterator iterOfTableName;
@@ -831,20 +849,24 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
              //Step 1: get Beginning & ending Price
              beginningPrice = endingPrice = 0.0;
              if (!getBeginAndEndPrice(*iterOfTableName, beginningPrice, endingPrice)) {
+                 closeOriginDB(aDBName);
                  return false;
              }
 
              //Step 2: filter
              if (!filterTableByTurnOver(*iterOfTableName, aMinTurnover)) {
+                 closeOriginDB(aDBName);
                  return false;
              }
 
              //Step 3: compute && save result 
              if (!computeResultFromTable(aDBName, mTmpResultTableName, *iterOfTableName, beginningPrice, endingPrice)) {
+                 closeOriginDB(aDBName);
                  return false;
              }
 
              if (!clearTable(mTmpResultTableName)) {
+                 closeOriginDB(aDBName);
                  return false;
              }
          }
@@ -852,15 +874,20 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
 
     ////Step 4: save to final result 
     if (!saveBaseResultInBatch(aDBName, mResultTableName)) {
+        closeOriginDB(aDBName);
         return false;
     }
 
+    closeOriginDB(aDBName);
     return true;
 }
 
 //FIXME: the recommandBuyRegions should be of const
 bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyRegions) {
     LOGI(LOGTAG, "Enter getHitRateOfBuying, aDBName:%s", aDBName.c_str());
+    if (recommandBuyRegions.size() < 1) {
+        return true;
+    }
     std::string sql, targetColumns;
     sqlite3_stmt* stmt = NULL;
     bool boolRet = false;
@@ -869,6 +896,7 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
     boolRet = openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName);
     if (!boolRet) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -888,6 +916,7 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
 
     if (intRet != SQLITE_OK) {
         LOGI(LOGTAG, "Fail to prepare stmt to Table: %s, ret:%d", mResultTableName.c_str(), intRet);
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -897,13 +926,13 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
     DBFilter::PriceRegion tmpPriceRegion;
 
     std::list<DBFilter::DateRegion>::iterator debugDateRegionItr = recommandBuyRegions.begin();
-    while (debugDateRegionItr != recommandBuyRegions.end()) {
-        LOGD(LOGTAG, "mStartDate in recommandRegions:%s, mEndDate:%s", (*debugDateRegionItr).mStartDate.c_str(), (*debugDateRegionItr).mEndDate.c_str());
-        debugDateRegionItr++;
-    }
+    //while (debugDateRegionItr != recommandBuyRegions.end()) {
+    //    LOGI(LOGTAG, "mStartDate in recommandRegions:%s, mEndDate:%s", (*debugDateRegionItr).mStartDate.c_str(), (*debugDateRegionItr).mEndDate.c_str());
+    //    debugDateRegionItr++;
+    //}
 
     //Step 1: compare the Date
-    while (sqlite3_step(stmt) == SQLITE_ROW) {
+    while (sqlite3_step(stmt) == SQLITE_ROW && itr != recommandBuyRegions.end()) {
         //NOTE: Assume that the recommandBuyRegions are ordered by date.
         std::string date = (char*)sqlite3_column_text(stmt, 0);
         if (date < (*itr).mStartDate) {
@@ -930,6 +959,7 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
 
     intRet = sqlite3_finalize(stmt);
     if (intRet != SQLITE_OK) {
+        closeOriginDB(aDBName);
         LOGI(LOGTAG, "Fail to finalize the stmt to finalize table:%s", mResultTableName.c_str());
         return false;
     }
@@ -938,6 +968,7 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
     //Step 2: ensure UP DOWN
     if (realPriceRegions.size() != recommandBuyRegions.size()) {
         LOGI(LOGTAG, "The size of PriceRegions does not equal to that of recommandBuyRegions"); LOGI(LOGTAG, "realPriceRegions length:%d, recommandBuyRegions:%d", realPriceRegions.size(), recommandBuyRegions.size());
+        closeOriginDB(aDBName);
         return false;
     }
 
@@ -969,6 +1000,7 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
     double hitRate = count/realPriceRegions.size();
     LOGI(LOGTAG, "HitRate for Suggesting Buy:%f, shot count:%f, sum count:%d", hitRate, count, realPriceRegions.size());
     LOGI(LOGTAG, "\n\n======sum of reallly HitShots:%f, sum of Forcasters:%f, hitRate:%f, sumIncome:%f\n\n", sumShots, sumForcasters, hitRate, sumIncome);
+    closeOriginDB(aDBName);
 
     return true;
 }

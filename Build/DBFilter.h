@@ -150,6 +150,7 @@ class DBFilter {
 
     std::list<BaseResultData> mBaseResultDatas;
     sqlite3* mOriginDB;
+    std::string mDBName;
     static std::list<std::string> mTableNames;
     static std::string mResultTableName;
     static std::string mTmpResultTableName;

@@ -5,6 +5,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <errno.h>
+
 #define LOGTAG "DBWrapperSqlite3"
 
 #define DEFAULT_VALUE_FOR_INT -1
@@ -134,10 +136,18 @@ DBWrapper::~DBWrapper() {
 }
 
 bool DBWrapper::openDB(const std::string& DBName, sqlite3** ppDB) {
+    errno = 0;
+    sqlite3* targetDB = getDBByName(DBName);
+    if (targetDB != NULL) {
+        *ppDB == targetDB;
+        return true;
+    }
     int ret = DEFAULT_VALUE_FOR_INT;
+    errno = 0;
     ret = sqlite3_open(DBName.c_str(), ppDB);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to open Database with the name of %s\n", DBName.c_str());
+        LOGI(LOGTAG, "Fail to open Database with the name of %s, errno:%d", DBName.c_str(), errno);
+        exit(1);
         return false;
     }
 
@@ -148,8 +158,17 @@ bool DBWrapper::openDB(const std::string& DBName, sqlite3** ppDB) {
 }
 
 bool DBWrapper::closeDB(const std::string& DBName) {
+    errno = 0;
     sqlite3* targetDB = getDBByName(DBName);
-    sqlite3_close(targetDB);
+    if (targetDB == NULL) {
+        LOGI(LOGTAG, "The Database with the name of %s, has been closed, errno:%d", DBName.c_str(), errno);
+        return true;
+    }
+    int ret = sqlite3_close(targetDB);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to close Database with the name of %s, ret:%d", DBName.c_str(), ret);
+        exit(1);
+    }
     mDatabaseMap.erase(DBName);
     return true;
 }
@@ -392,6 +411,10 @@ bool DBWrapper::updateRows(std::string& DBName, std::string& tableName, std::str
 
 //=======private
 sqlite3* DBWrapper::getDBByName(const std::string& DBName) {
+    if (!mDatabaseMap.count(DBName)) {
+        return NULL;
+    }
+
     std::map<std::string, sqlite3*>::iterator itr = mDatabaseMap.find(DBName);
     return itr->second;
 }
