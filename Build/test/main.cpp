@@ -111,8 +111,9 @@ bool filterOriginDB() {
     getAllDatabase(fileNames);
     Forecaster* pForecaster = new Forecaster();
     for (int i = 0; i < fileNames.size(); i++) {
-        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
-        printf("fileNames:%s", fileNames[i].c_str());
+        pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+      //pForecaster->forecasteFromFirstPositiveFlowin("dbs/002258.db");
+      //printf("fileNames:%s", fileNames[i].c_str());
     }
     return true;
 }

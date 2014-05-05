@@ -334,6 +334,9 @@ bool DBWrapper::insertFilterResultsInBatch(const std::string& DBName,
          sqlite3_reset(stmt);
          if (bindCommand(*itrOfValues, stmt) &&
              sqlite3_step(stmt) != SQLITE_DONE){
+             //FIXME: Maybe we should end the process now
+             sqlite3_finalize(stmt);
+             endBatch(targetDB);
              LOGI(LOGTAG, "Fail to insert filter results into table: %s in DB: %s", tableName.c_str(), DBName.c_str());
              return false;
          }

@@ -8,7 +8,7 @@
 #include <stdio.h>
 #include <errno.h>
 
-#define DEFAULT_LASTING_LEN 4
+#define DEFAULT_LASTING_LEN 3
 
 #define LOGTAG   "DBFilter"
 #define DEFAULT_VALUE_FOR_INT -1
@@ -110,6 +110,24 @@ DBFilter::DBFilter(const std::string& aDBName)
 
 DBFilter::~DBFilter() {
     closeOriginDB(mDBName);
+}
+
+bool DBFilter::clearTableFromOriginDB(const std::string& aDBName, const std::string& aTableName) {
+    LOGI(LOGTAG, "clear Table: %s from Database: %s", aTableName.c_str(), aDBName.c_str());
+
+    if (!openOriginDB(aDBName)) {
+        exit(1);
+        LOGI(LOGTAG, "Fail to open db:%s", aDBName.c_str());
+        return false;
+    }
+
+    if (!clearTable(aTableName)) {
+        LOGI(LOGTAG, "Fail to clear table:%s", aTableName.c_str());
+        return false;
+    }
+    closeOriginDB(aDBName);
+
+    return true;
 }
 
 bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnOver) {
@@ -299,6 +317,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, st
 static double sumFlowinSinceBeginningDay;
 static double sumFlowoutSinceBeginningDay;
 static std::string lastCountedDate;
+static int sumAvailableCount;
 
 static void countInTurnOver(const std::string& date, bool reset, double flowinOneDay = 0, double flowoutOneDay = 0) {
     LOGD(LOGTAG, "BEFORE  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
@@ -308,22 +327,26 @@ static void countInTurnOver(const std::string& date, bool reset, double flowinOn
     if (!reset) {
         sumFlowinSinceBeginningDay  += flowinOneDay;
         sumFlowoutSinceBeginningDay += flowoutOneDay;
+        sumAvailableCount++;
     } else {
         sumFlowinSinceBeginningDay  = 0;
         sumFlowoutSinceBeginningDay = 0;
+        sumAvailableCount = 0;
     }
     lastCountedDate = date;
     LOGD(LOGTAG, "AFTER  ##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
 }
 
 static bool shouldSaleOut(double flowinOneDay, double flowoutOneDay) {
+    sumAvailableCount++;
     sumFlowinSinceBeginningDay  += flowinOneDay;
     sumFlowoutSinceBeginningDay += flowoutOneDay;
 
     LOGD(LOGTAG, "=====================================================sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
-    if (sumFlowoutSinceBeginningDay > sumFlowinSinceBeginningDay * 0.75) {
+    if (sumFlowoutSinceBeginningDay > sumFlowinSinceBeginningDay * 0.7) {
         LOGD(LOGTAG, "##################sumFlowinSinceBeginningDay:%f, sumFlowoutSinceBeginningDay:%f", sumFlowinSinceBeginningDay, sumFlowoutSinceBeginningDay);
         sumFlowoutSinceBeginningDay = sumFlowinSinceBeginningDay = 0;
+        sumAvailableCount = 0;
         return true;
     }
     return false;
@@ -332,7 +355,7 @@ static bool shouldSaleOut(double flowinOneDay, double flowoutOneDay) {
 static bool shouldBuyInNow() {
     if ((sumFlowinSinceBeginningDay > MIN_TURNOVER) &&
         (sumFlowoutSinceBeginningDay > MIN_TURNOVER)) {
-        return sumFlowinSinceBeginningDay > (2 * sumFlowoutSinceBeginningDay);
+        return sumFlowinSinceBeginningDay > (1.5 * sumFlowoutSinceBeginningDay);
     }
     return false;
 }
@@ -357,6 +380,8 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
     targetColumns += TURNOVER_BUY;
     targetColumns += ",";
     targetColumns += FLOWIN_ONE_DAY;
+    targetColumns += ",";
+    targetColumns += SUM_FLOWIN_TEN_DAYS;
     targetColumns += ",";
     targetColumns += BEGIN_PRICE;
     targetColumns += ",";
@@ -394,8 +419,9 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
         double turnoverSale = sqlite3_column_double(stmt, 1);
         double turnoverBuy  = sqlite3_column_double(stmt, 2);
         double flowinOneDay = sqlite3_column_double(stmt, 3);
-        double beginPrice   = sqlite3_column_double(stmt, 4);
-        double endPrice     = sqlite3_column_double(stmt, 5);
+        double flowinTenDay = sqlite3_column_double(stmt, 4);
+        double beginPrice   = sqlite3_column_double(stmt, 5);
+        double endPrice     = sqlite3_column_double(stmt, 6);
 
         LOGD(LOGTAG, "aDBName:%s, Date:%s, TurnoverSale:%f, TurnoverBuy:%f, flowinOneDay:%f, beginPrice:%f, endPrice:%f",
                       aDBName.c_str(), date.c_str(), turnoverSale, turnoverBuy, flowinOneDay, beginPrice, endPrice);
@@ -431,10 +457,13 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
         }
 
         //Step 2: check whether the Turnover & Price meets our need
-        if (newContiniousBlockStarted &&
-            (lastingDays >= DEFAULT_LASTING_LEN || (shouldBuyInNow() && lastingDays >= 1))) {
+        if (newContiniousBlockStarted
+            && ((shouldBuyInNow() && lastingDays >= (DEFAULT_LASTING_LEN/2))
+            || flowinTenDay > 1.3 * flowinOneDay 
+            || lastingDays >= DEFAULT_LASTING_LEN)) {
+            //|| (shouldBuyInNow() && lastingDays >= (DEFAULT_LASTING_LEN/2)))) {
             countInTurnOver(date, false, turnoverBuy, turnoverSale);
-            if (count >= (DEFAULT_LASTING_LEN / 2)) {
+            if ( count >= 1 || lastingDays >= DEFAULT_LASTING_LEN) {
                 LOGI(LOGTAG, "Meet the contition to start the newBuySaleBlockStarted, DBName:%s, date:%s", aDBName.c_str(), date.c_str());
                 newBuySaleBlockStarted = true;
                 tmpDateRegion.mStartDate = date;
@@ -943,7 +972,7 @@ bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter
             // once beggingPrice is set, a new block of region start.
             // so clear the endPrice.
             LOGD(LOGTAG, "Find the the startDate in recommandRegions:%s", date.c_str());
-            tmpPriceRegion.mBeginPrice = sqlite3_column_double(stmt, 1);
+            tmpPriceRegion.mBeginPrice = sqlite3_column_double(stmt, 2);
             continue;
         } else if (date == (*itr).mEndDate) {
             // record the endPrice

@@ -41,6 +41,7 @@ class DBFilter {
 
     DBFilter(const std::string& aDBName);
     ~DBFilter();
+    bool clearTableFromOriginDB(const std::string& aDBName, const std::string& aTableName);
 
     /*
      * Filter the origin database with the aTurnover and save the result
