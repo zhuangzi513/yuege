@@ -36,17 +36,17 @@ int searchCallback(void *arg1, int arg2, char **arg3, char **arg4) {
     return 0;
 }
 
-bool createOriginDB(const std::string& fileName)
-{
-    OriginDBHelper* originDBHelper = new OriginDBHelper();
-    if (originDBHelper) {
-        originDBHelper->createOriginTableFromFile(fileName);
-    }
-    return true;
-}
+//bool createOriginDB(const std::string& fileName)
+//{
+//    OriginDBHelper* originDBHelper = new OriginDBHelper();
+//    if (originDBHelper) {
+//        originDBHelper->createOriginTableFromFile(fileName);
+//    }
+//    return true;
+//}
 
-void getAllDatabase(std::vector<std::string>& fileNames) {
-    std::string currentDir("dbs");
+void getAllDatabase(std::list<std::string>& fileNames, const std::string targetDir) {
+    std::string currentDir(targetDir);
     std::string fullName;
     struct dirent* pDirent = NULL;
     struct stat s;
@@ -65,6 +65,7 @@ void getAllDatabase(std::vector<std::string>& fileNames) {
         pDirent = readdir(pDir);
         if (pDirent != NULL) {
             if ((strcmp((const char*)pDirent->d_name, ".") == 0) ||
+                (strcmp((const char*)pDirent->d_name, ".git") == 0) ||
                 (strcmp((const char*)pDirent->d_name, "..") == 0) ){
                 continue;
             }
@@ -83,6 +84,8 @@ void getAllDatabase(std::vector<std::string>& fileNames) {
                     printf( "find file named:%s, first '.db':%d \n", childName.c_str(), childName.find_first_of(".db"));
                     fileNames.push_back(fullName);
                 }
+            } else if (S_ISDIR(s.st_mode)) {
+                    fileNames.push_back(fullName);
             } else if (S_ISLNK(s.st_mode)) {
                 printf( "find file named:%s, LINK\n", childName.c_str());
             } else if (S_ISBLK(s.st_mode)) {
@@ -107,30 +110,62 @@ void getAllDatabase(std::vector<std::string>& fileNames) {
 }
 
 bool filterOriginDB() {
-    std::vector<std::string> fileNames;
-    getAllDatabase(fileNames);
-    Forecaster* pForecaster = new Forecaster();
-    for (int i = 0; i < fileNames.size(); i++) {
-        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
-        printf("fileNames:%s", fileNames[i].c_str());
-    }
+//    std::vector<std::string> fileNames;
+//    getAllDatabase(fileNames, "dbs");
+//    Forecaster* pForecaster = new Forecaster();
+//    for (int i = 0; i < fileNames.size(); i++) {
+//        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+//        printf("fileNames:%s", fileNames[i].c_str());
+//    }
     return true;
 }
 
-bool createOriginDBForDir(const std::string& dirName) {
+bool updateOriginDBs(const std::string& dirName) {
     OriginDBHelper* originDBHelper = new OriginDBHelper();
-    if (originDBHelper) {
-        originDBHelper->createOriginDBForDir(dirName);
+
+    std::list<std::string> detailNames;
+    std::list<std::string>::iterator itrDetail;
+    getAllDatabase(detailNames, "details");
+    detailNames.sort();
+//    for (itrDetail = detailNames.begin(); itrDetail != detailNames.end(); itrDetail++){
+//        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+//        printf("fileNames:%s\n", (*itrDetail).c_str());
+//    }
+
+    std::list<std::string> originDBNames;
+    std::list<std::string>::iterator itrDB;
+    getAllDatabase(originDBNames, "dbs");
+    originDBNames.sort();
+//    for (itrDB = originDBNames.begin(); itrDB != originDBNames.end(); itrDB++) {
+//        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+//        printf("fileNames:%s\n", (*itrDB).c_str());
+//    }
+
+    std::string stockIDFromDB, stockIDFromDetail;
+    itrDetail = detailNames.begin();
+    itrDB     = originDBNames.begin();
+    while(itrDB != originDBNames.end()
+          && itrDetail != detailNames.end()) {
+         stockIDFromDB     = (*itrDB).substr((*itrDB).find_first_of('/') + 1, 6);
+         stockIDFromDetail = (*itrDetail).substr((*itrDetail).find_first_of('/') + 1);
+         printf("stockIDFromDB:%s, stockIDFromDetail:%s\n", stockIDFromDB.c_str(), stockIDFromDetail.c_str());
+         if (stockIDFromDB != stockIDFromDetail) {
+             break;
+         }
+         originDBHelper->updateOriginDBForStock(*itrDetail, *itrDB);
+         itrDB++;
+         itrDetail++;
     }
+
     return true;
 }
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   //createOriginDBForDir("details");
-   filterOriginDB();
-   double hintRate = 0.0;
-   DBFilter::getGlobalHitRate(hintRate);
-   printf("\n\n\n=================Global Hint Rate:%f\n\n\n", hintRate);
+   updateOriginDBs("details");
+   //filterOriginDB();
+   //double hintRate = 0.0;
+   //DBFilter::getGlobalHitRate(hintRate);
+   //printf("\n\n\n=================Global Hint Rate:%f\n\n\n", hintRate);
    return 1;
 }

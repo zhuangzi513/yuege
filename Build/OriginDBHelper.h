@@ -28,11 +28,13 @@ class OriginDBHelper {
 
     bool travelDir(const std::string& dirName, const std::string& fileName="");
     bool createOriginDBForDir(const std::string& dirName);
-    bool createOriginTableFromFile(const std::string& name);
+    bool updateOriginDBForStock(const std::string& fullPathofDetails, const std::string& fullPathofOriginDB);
     sqlite3* getOriginDBForDate(const std::string& date);
     bool applyFilter(const std::string& filterComment, const std::string& tableName);
 
   private:
+    bool createOriginTableFromFile(const std::string& name, const std::string& originDBName="");
+    bool addMoreTableToOriginDB(const std::string& aDBName, const std::list<std::string> tableNames);
     bool getSpecsFromFileName(const std::string& fileName,
                               std::string& date, std::string& stockID);
     bool insertElement(const XLSReader::XLSElement* xlsElement);

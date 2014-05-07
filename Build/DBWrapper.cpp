@@ -14,6 +14,16 @@
 
 static char* sqlERR = NULL;
 
+static std::string GET_TABLES() {
+    std::string command("");
+    command += " SELECT name FROM ";
+    command += " sqlite_master ";
+    command += " WHERE TYPE=\"table\"";
+    command += " ORDER BY name ";
+    return command;
+}
+
+
 static bool bindCommand(XLSReader::XLSElement* xlsElement, sqlite3_stmt* stmt) {
     int ret = -1;
     //FIXME: For now, time is not used.
@@ -238,6 +248,53 @@ bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const 
 
     return true;
 }
+
+bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::string>& tableNames) {
+    std::string sql = GET_TABLES();
+    //LOG sql
+    sqlite3_stmt* stmt = NULL;
+    int ret = -1;
+    sqlite3* targetDB = NULL;
+    if (!openDB(aDBName, &targetDB)) {
+        LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
+        closeDB(aDBName);
+        return false;
+    }
+    ret = sqlite3_prepare(targetDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d", aDBName.c_str(), errno);
+        closeDB(aDBName);
+        return false;
+    }
+
+    while (true) {
+        ret = sqlite3_step(stmt);
+        if (ret == SQLITE_ROW) {
+            std::string tableName = (char*)sqlite3_column_text(stmt, 0);
+            tableNames.push_back(tableName);
+        } else if (ret == SQLITE_DONE) {
+            LOGI(LOGTAG, "DONE, value:%d", ret);
+            break;
+        } else {
+            LOGI(LOGTAG, "OTHER, value:%d", ret);
+            break;
+        }
+    }
+
+    if (SQLITE_OK != sqlite3_finalize(stmt)) {
+        LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
+        closeDB(aDBName);
+        return false;
+    }
+
+    closeDB(aDBName);
+    return true;
+}
+
 
 bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;
