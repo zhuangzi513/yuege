@@ -33,6 +33,7 @@ static double sumIncome = 0.0;
 static std::list<double> sPre15Flowins;
 
 std::list<std::string> DBFilter::mTableNames;
+std::list<std::string> DBFilter::mNewAddedTables;
 std::string DBFilter::mResultTableName         = "FilterResult";
 std::string DBFilter::mTmpResultTableName      = "MiddleWareTable";
 std::string DBFilter::mDiffBigBuySaleTableName = "";
@@ -121,18 +122,123 @@ bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aM
     }
 
     //Step 1: get all the tables in the OriginDB
-    if (!getAllTablesOfDB(aDBName)) {
+    if (!DBWrapper::getAllTablesOfDB(aDBName, mTableNames)) {
         closeOriginDB(aDBName);
         LOGI(LOGTAG, "Failt to get tables from :%s", aDBName.c_str());
         return false;
     }
 
     //Step 2: Filter all the tables of the OriginDB and save them in a 'tmp table'
-    if (!filterAllTablesByTurnOver(aDBName, aMinTurnover)) {
+    if (!filterTablesByTurnOver(aDBName, aMinTurnover, mTableNames)) {
         closeOriginDB(aDBName);
         LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
         return false;
     }
+
+    closeOriginDB(aDBName);
+    return true;
+}
+
+bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnOver) {
+    LOGI(LOGTAG, "DBName:%s", aDBName.c_str());
+    if (!openOriginDB(aDBName)) {
+        closeOriginDB(aDBName);
+        LOGI(LOGTAG, "Fail to open db:%s", aDBName.c_str());
+        return false;
+    }
+
+    //Step 1: get all the tables in the OriginDB
+    errno = 0;
+    if (!DBWrapper::getAllTablesOfDB(aDBName, mTableNames)) {
+        closeOriginDB(aDBName);
+        LOGI(LOGTAG, "updateFilterResultByTurnOver Fail to get tables from :%s, errno:%d", aDBName.c_str(), errno);
+        return false;
+    }
+
+    //Step 2.1: get the filtered origin tables
+    std::list<std::string> filteredOriginTables;
+    std::string sql, targetColumns;
+    sqlite3_stmt* stmt = NULL;
+    bool boolRet = false;
+    int intRet = -1;
+
+    boolRet = openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, mResultTableName);
+    if (!boolRet) {
+        LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
+        closeOriginDB(aDBName);
+        return false;
+    }
+
+    targetColumns += DATE;
+    sql = SELECT_COLUMNS(mResultTableName, targetColumns);
+
+    LOGI(LOGTAG, "sql:%s", sql.c_str());
+    intRet = sqlite3_prepare_v2(mOriginDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+    LOGI(LOGTAG, "prepare stmt to Table:%s, intRet:%d, mOriginDB:%p", mResultTableName.c_str(), intRet, mOriginDB);
+
+    if (intRet != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt to Table:%s, intRet:%d, errorMessage:%s", mResultTableName.c_str(), intRet, sqlite3_errmsg(mOriginDB));
+        closeOriginDB(aDBName);
+        exit(1);
+        return false;
+    }
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        std::string dateOfOriginTable = (char*)sqlite3_column_text(stmt, 0);
+        filteredOriginTables.push_back(dateOfOriginTable);
+    }
+
+    if (SQLITE_OK != sqlite3_finalize(stmt)) {
+        LOGI(LOGTAG, "Fail to finalize stmt in updateFilterResultByTurnOver aDBName:%s", aDBName.c_str());
+        closeOriginDB(aDBName);
+        return false;
+    }
+
+    //Step 2.2: get the new added origin tables
+    std::list<std::string>::iterator itrAll = mTableNames.begin();
+    std::list<std::string>::iterator itrFiltered = filteredOriginTables.begin();
+    while (itrFiltered != filteredOriginTables.end()
+           && itrAll != mTableNames.end()) {
+           if ((*itrAll) == "FilterResult"
+               || (*itrAll) == "MiddleWareTable") {
+               itrAll++;
+               continue;
+           }
+
+           if ((*itrAll) == (*itrFiltered)) {
+               itrAll++;
+               itrFiltered++;
+               LOGI(LOGTAG, "New added Table:%s, DB:%s", (*itrAll).c_str(), aDBName.c_str());
+               continue;
+           } else if ((*itrAll) > (*itrFiltered)) {
+               mNewAddedTables.push_back(*itrAll);
+               LOGI(LOGTAG, "New added Table:%s, DB:%s", (*itrAll).c_str(), aDBName.c_str());
+               itrAll++;
+               continue;
+           } else {
+               // we should not get here
+               itrFiltered++;
+               continue;
+           }
+    }
+
+    while (itrAll != mTableNames.end()) {
+        mNewAddedTables.push_back(*itrAll);
+        LOGI(LOGTAG, "New added Table:%s, DB:%s", (*itrAll).c_str(), aDBName.c_str());
+        itrAll++;
+    }
+
+    //Step 3: get the new added origin tables
+    if (!filterTablesByTurnOver(aDBName, aMinTurnover, mNewAddedTables)) {
+        closeOriginDB(aDBName);
+        LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
+        return false;
+    }
+    mNewAddedTables.clear();
 
     closeOriginDB(aDBName);
     return true;
@@ -520,43 +626,6 @@ bool DBFilter::isTableExist(const std::string& DBName, const std::string& tableN
     return true;
 }
 
-bool DBFilter::getAllTablesOfDB(const std::string& aDBName) {
-    std::string sql = GET_TABLES();
-    //LOG sql
-    sqlite3_stmt* stmt = NULL;
-    int ret = -1;
-
-    ret = sqlite3_prepare(mOriginDB,
-                          sql.c_str(),
-                          -1,
-                          &stmt,
-                          NULL);
-    if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d", aDBName.c_str(), errno);
-        return false;
-    }
-
-    while (true) {
-        ret = sqlite3_step(stmt);
-        if (ret == SQLITE_ROW) {
-            std::string tableName = (char*)sqlite3_column_text(stmt, 0);
-            mTableNames.push_back(tableName);
-        } else if (ret == SQLITE_DONE) {
-            LOGI(LOGTAG, "DONE, value:%d", ret);
-            break;
-        } else {
-            LOGI(LOGTAG, "OTHER, value:%d", ret);
-            break;
-        }
-    }
-
-    if (SQLITE_OK != sqlite3_finalize(stmt)) {
-        LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
-        return false;
-    }
-    return true;
-}
-
 bool DBFilter::computeResultFromTable(const std::string& aDBName,
                                       const std::string& tmpTableName,
                                       const std::string& originTableName,
@@ -834,8 +903,11 @@ bool DBFilter::filterTableByTurnOver(const std::string& tableName, const int aMi
     return true;
 }
 
-bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int aMinTurnover) {
+bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const int aMinTurnover, std::list<std::string>& tableNames) {
     //FIXME: Assuming that process all the tables in one DB and then the tables of the other DB.
+    if (tableNames.size() < 1) {
+        return true;
+    }
     if (!openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mTmpResultTableName)) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mTmpResultTableName.c_str(), aDBName.c_str());
         closeOriginDB(aDBName);
@@ -843,7 +915,7 @@ bool DBFilter::filterAllTablesByTurnOver(const std::string& aDBName, const int a
     }
     std::list<std::string>::iterator iterOfTableName;
     double beginningPrice, endingPrice;
-    for (iterOfTableName = mTableNames.begin(); iterOfTableName != mTableNames.end(); iterOfTableName++) {
+    for (iterOfTableName = tableNames.begin(); iterOfTableName != tableNames.end(); iterOfTableName++) {
          if ((*iterOfTableName) != (mResultTableName) &&
              (*iterOfTableName) != (mTmpResultTableName)) {
              //Step 1: get Beginning & ending Price

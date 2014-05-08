@@ -46,7 +46,8 @@ class DBFilter {
      * Filter the origin database with the aTurnover and save the result
      * into another database.
      */
-    bool filterOriginDBByTurnOver(const std::string& aDBName, int aMinTurnover, int aMaxTurnover);
+    bool filterOriginDBByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnover);
+    bool updateFilterResultByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnOver);
     bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
     static bool getGlobalHitRate(double& hitRate);
     bool getRecommandBuyDateRegions(const int throughWhat, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
@@ -61,14 +62,12 @@ class DBFilter {
     sqlite3* getDBByName(const std::string& DBName);
     bool isTableExist(const std::string& DBName, const std::string& tableName);
 
-    bool getAllTablesOfDB(const std::string& tableName);
-
     bool saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName);
     bool computeResultFromTable(const std::string& aDBName, const std::string& tmpTableName, const std::string& originTableName, const double beginningPrice, const double endingPrice);
     bool clearTable(const std::string& tableName);
     bool getBeginAndEndPrice(const std::string& tableName, double& beginningPrice, double& endingPrice);
     bool filterTableByTurnOver(const std::string& tableName, const int aMinTurnover);
-    bool filterAllTablesByTurnOver(const std::string& tableName, const int aMinTurnover);
+    bool filterTablesByTurnOver(const std::string& tableName, const int aMinTurnover, std::list<std::string>& tableNames);
 
   public:
     class BaseResultData {
@@ -152,6 +151,7 @@ class DBFilter {
     sqlite3* mOriginDB;
     std::string mDBName;
     static std::list<std::string> mTableNames;
+    static std::list<std::string> mNewAddedTables;
     static std::string mResultTableName;
     static std::string mTmpResultTableName;
     static std::string mDiffBigBuySaleTableName;

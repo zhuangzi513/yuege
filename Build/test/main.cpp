@@ -122,6 +122,7 @@ bool filterOriginDB() {
 
 bool updateOriginDBs(const std::string& dirName) {
     OriginDBHelper* originDBHelper = new OriginDBHelper();
+    DBFilter* dbFilter = NULL;
 
     std::list<std::string> detailNames;
     std::list<std::string>::iterator itrDetail;
@@ -152,9 +153,17 @@ bool updateOriginDBs(const std::string& dirName) {
          if (stockIDFromDB != stockIDFromDetail) {
              break;
          }
-         originDBHelper->updateOriginDBForStock(*itrDetail, *itrDB);
+         if (stockIDFromDB < "000757") {
+             itrDB++;
+             itrDetail++;
+             continue;
+         }
+         //originDBHelper->updateOriginDBForStock(*itrDetail, *itrDB);
+         dbFilter = new DBFilter(*itrDB);
+         dbFilter->updateFilterResultByTurnOver(*itrDB, 50000, 10000);
          itrDB++;
          itrDetail++;
+         delete dbFilter;
     }
 
     return true;
@@ -163,7 +172,7 @@ bool updateOriginDBs(const std::string& dirName) {
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
    updateOriginDBs("details");
-   //filterOriginDB();
+   filterOriginDB();
    //double hintRate = 0.0;
    //DBFilter::getGlobalHitRate(hintRate);
    //printf("\n\n\n=================Global Hint Rate:%f\n\n\n", hintRate);

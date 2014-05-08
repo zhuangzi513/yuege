@@ -149,7 +149,7 @@ bool DBWrapper::openDB(const std::string& DBName, sqlite3** ppDB) {
     errno = 0;
     sqlite3* targetDB = getDBByName(DBName);
     if (targetDB != NULL) {
-        *ppDB == targetDB;
+        *ppDB = targetDB;
         return true;
     }
     int ret = DEFAULT_VALUE_FOR_INT;
@@ -266,7 +266,7 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
                           &stmt,
                           NULL);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d", aDBName.c_str(), errno);
+        LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d, ret:%d", aDBName.c_str(), errno, ret);
         closeDB(aDBName);
         return false;
     }
