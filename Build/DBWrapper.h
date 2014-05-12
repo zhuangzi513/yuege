@@ -39,6 +39,7 @@ class DBWrapper {
     static bool closeDB(const std::string& DBName);
     static bool beginBatch(sqlite3* db);
     static bool endBatch(sqlite3* db);
+    static bool getAllTablesOfDB(const std::string& aDBName, std::list<std::string>& tableNames);
 
     static bool insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback);
     static bool insertElementsInBatch(std::string& DBName, std::string& tableName, std::list<std::string>& values, std::list<XLSReader::XLSElement*>& xlsValues, sqlite3_callback fCallback);
@@ -52,7 +53,7 @@ class DBWrapper {
     static bool updateColumns(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
 
     static bool insertRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
-    static bool deleteRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
+    static bool deleteRows(std::string& DBName, std::string& tableName, std::string& keyColumn, std::list<std::string>& targetRows);
     static bool updateRows(std::string& DBName, std::string& tableName, std::string& description, sqlite3_callback fCallback);
 
   private:

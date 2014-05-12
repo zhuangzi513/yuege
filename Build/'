@@ -23,22 +23,6 @@ static std::string GET_TABLES() {
     return command;
 }
 
-static std::string DELETE_ROWS_FROM_TABLE(const std::string& srcTable,
-                                          const std::string& keyColumn,
-                                          const std::string& rowID) {
-    std::string command("");
-    command += " DELETE FROM ";
-    command += srcTable;
-    command += " WHERE ";
-    command += keyColumn;
-    command += " IN ( ";
-    command += rowID;
-    command += " ) ";
-
-    return command;
-}
-
-
 
 static bool bindCommand(XLSReader::XLSElement* xlsElement, sqlite3_stmt* stmt) {
     int ret = -1;
@@ -141,6 +125,18 @@ static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sql
     ret = sqlite3_bind_double(stmt, 11, filterResultElement.mEndPrice);
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mEndPrice);
+        return false;
+    }
+
+    return true;
+}
+
+static bool bindCommand(const std::string& targetRow, sqlite3_stmt* stmt) {
+    int ret = -1;
+    //FIXME: For now, time is not used.
+    ret = sqlite3_bind_text(stmt, 1, targetRow.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind Time Fail: %s", xlsElement->mTime.c_str());
         return false;
     }
 
@@ -476,48 +472,34 @@ bool DBWrapper::insertRows(std::string& DBName, std::string& tableName, std::str
     return true;
 }
 
-bool DBWrapper::deleteRows(std::string& DBName, std::string& tableName, std::string& keyColumn, std::list<std::string>& targetRows) {
+bool DBWrapper::deleteRows(std::string& DBName, std::string& tableName, std::list<std::string>& targetRows, sqlite3_callback fCallback) {
     int ret = -1;
     std::string sql;
     sqlite3* targetDB = NULL;
-    sqlite3_stmt* stmt = NULL;
-
-    std::list<std::string>::iterator itrRow;
-    std::string deleteCondition;
-    for (itrRow = targetRows.begin(); itrRow != targetRows.end();) {
-         deleteCondition += "\"";
-         deleteCondition += (*itrRow);
-         deleteCondition += "\"";
-         if (++itrRow != targetRows.end()) {
-             deleteCondition += ", ";
-         }
-    }
-
-
-    sql = DELETE_ROWS_FROM_TABLE(tableName, keyColumn, deleteCondition);
 
     DBWrapper::openDB(DBName, &targetDB);
     if (targetDB == NULL) {
-        LOGI(LOGTAG, "Fail to open DB:%s in DBWrapper::deleteRows", DBName.c_str());
         return false;
     }
 
     ret = sqlite3_prepare(targetDB, sql.c_str(), -1, &stmt, NULL);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt for DB:%s, sql:%s", DBName.c_str(), sql.c_str());
         return false;
     }
 
-    if (sqlite3_step(stmt) != SQLITE_DONE){
-        LOGI(LOGTAG, "Fail to step stmt for delete row:%s in table:%s of DB:%s, sqlite3_errmsg:%s", (*itrRow).c_str(), tableName.c_str(), DBName.c_str(), sqlite3_errmsg(targetDB));
-        exit(1);
-        return false;
+    std::list<std::string>::iterator itrRow;
+    for (itrRow = targetRows.begin(); itrRow != targetRows.end(); itrRow++) {
+         sqlite3_reset(stmt);
+         if (bindCommand(targetRow, stmt) &&
+             sqlite3_step(stmt) != SQLITE_DONE){
+             //LOGI
+             return false;
+         }
     }
     
     if (SQLITE_OK != sqlite3_finalize(stmt)) {
         return false;
     }
-    closeDB(DBName);
 
     return true;
 }

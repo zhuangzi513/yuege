@@ -97,8 +97,106 @@ bool OriginDBHelper::createOriginDBForDir(const std::string& dirName) {
     return true;
 }
 
-bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName) {
-    std::string dbName;
+static std::string getFileNO(std::string& originFile) {
+    //PATH/StockID/2014/03/02.xls
+    //length of "2014/03/02" is 10
+    std::string fileNO;
+    int dateEndPos, dateBeginPos;
+    dateEndPos   = originFile.find_first_of('.');
+    dateBeginPos = dateEndPos - 10;
+    fileNO = originFile.substr(dateBeginPos, 10);
+    fileNO = fileNO.substr(0, 4) + fileNO.substr(5, 2) + fileNO.substr(8, 2);
+
+    return fileNO;
+}
+
+static bool getFilesNeedToUpdate(std::list<std::string>& existingTables,
+                                 std::list<std::string>& originFiles,
+                                 std::list<std::string>& outFilesNeedToUpdate) {
+    std::list<std::string>::iterator itrTable  = existingTables.begin();
+    std::list<std::string>::iterator itrDetail = originFiles.begin();
+    std::string tableNO, fileNO;
+    //FIXME: assume that there are some tables in the OriginDB already
+    while (itrTable != existingTables.end()
+        && itrDetail != originFiles.end()) {
+        if ((*itrTable) == "FilterResult"
+            || ((*itrTable) == "MiddleWareTable")) {
+            itrTable++;
+            continue;
+        }
+
+        tableNO = (*itrTable).substr(1);
+        fileNO = getFileNO(*itrDetail); 
+
+        if (tableNO == fileNO) {
+            //The originFile has been added
+            itrTable++;
+            itrDetail++;
+            continue;    
+        } else if (tableNO < fileNO) {
+            //The originFile has not been added
+            //AddTheFileToDB
+            outFilesNeedToUpdate.push_back(*itrDetail);
+            itrDetail++;
+        } else {
+            //For the sake of removing empty origin files
+            LOGI(LOGTAG, "tableNO: %s, fileNO:%s", tableNO.c_str(), fileNO.c_str());
+            itrTable++;
+        }
+    }
+
+    // the remaining origin files to update
+    while (itrDetail != originFiles.end()) {
+        fileNO = getFileNO(*itrDetail);
+        if (tableNO < fileNO) {
+            LOGI(LOGTAG, "tableNO: %s, fileNO:%s, originFile:%s", tableNO.c_str(), fileNO.c_str(), (*itrDetail).c_str());
+            outFilesNeedToUpdate.push_back(*itrDetail);
+        }
+        itrDetail++;
+    }
+
+
+    return true;
+}
+
+bool OriginDBHelper::updateOriginDBForStock(const std::string& fullPathofDetails, const std::string& fullPathofOriginDB) {
+    std::list<std::string> existingTables;
+    if (!DBWrapper::getAllTablesOfDB(fullPathofOriginDB, existingTables)) {
+        LOGI(LOGTAG, "Fail to get tables from originDB: %s", fullPathofOriginDB.c_str());
+        return false;
+    }
+    existingTables.sort();
+
+    if (!travelDir(fullPathofDetails)) {
+        LOGI(LOGTAG, "Fail to get detail files from dir: %s", fullPathofDetails.c_str());
+        return false;
+    }
+
+    std::list<std::string> newDetailFiles;
+    mOriginFiles.sort();
+
+    if (!getFilesNeedToUpdate(existingTables, mOriginFiles, newDetailFiles)) {
+        LOGE(LOGTAG, "Fail to get files need to update for DB dir: %s", fullPathofOriginDB.c_str());
+        return false;
+    }
+
+//#if DEBUG
+    std::list<std::string>::iterator itrDebug = newDetailFiles.begin();
+    while(itrDebug != newDetailFiles.end()) {
+        if (!createOriginTableFromFile(*itrDebug, fullPathofOriginDB)) {
+            LOGE(LOGTAG, "Cannot create OriginTbale for Origin file:%s", (*itrDebug).c_str());
+            break;
+        }
+        itrDebug++;
+    }
+//#endif
+
+    mOriginFiles.clear();
+    return true;
+}
+
+bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName, const std::string& originDBName) {
+    std::string dbName = originDBName;
     std::string tableName;
     // Need to figure out how to generate the DBName and TableName from
     // DBName = StockID && TableName = date ???
@@ -134,6 +232,10 @@ bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName) {
     return true;
 }
 
+bool OriginDBHelper::addMoreTableToOriginDB(const std::string& aDBName, const std::list<std::string> tableNames) {
+    return true;
+}
+
 sqlite3* OriginDBHelper::getOriginDBForDate(const std::string& date) {
     return NULL;
 }
@@ -151,7 +253,6 @@ bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
 
     int32_t start = fileNoPrefix.find_first_of('/') + 1;
     int32_t end   = fileNoPrefix.find_first_of('.');
-    dbName    = fileNoPrefix.substr(0, fileNoPrefix.find_first_of('/'));
     tableName = fileNoPrefix.substr(start, end - start);
     std::string year("");
     std::string month("");
@@ -175,7 +276,10 @@ bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
     LOGI(LOGTAG, "tableName:%s", tableName.c_str());
 
     // XXX: database name
-    dbName = dbName + SUFFIX_OF_DB_TYPE;
+    if (dbName.size() == 0) {
+        dbName    = fileNoPrefix.substr(0, fileNoPrefix.find_first_of('/'));
+        dbName = dbName + SUFFIX_OF_DB_TYPE;
+    }
     LOGI(LOGTAG, "dbName:%s", dbName.c_str());
     return true;
 }
