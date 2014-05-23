@@ -44,14 +44,12 @@ class DBFilter {
     bool clearTableFromOriginDB(const std::string& aDBName, const std::string& aTableName);
 
     /*
-     * Filter all the origin-table(s) in the origin database with the specific turnover region
+     * Filter all the origin-table(s) in the origin database with the specific turnovers in mFilterTurnOvers
      * and save the results into the result-tables.
      *
      * aDBName:      The origin-data to be filtered;
-     * aMinTurnOver: The bottom edge of the specific turnover region;
-     * aMinTurnOver: The top edge of the specific turnover region;
     */
-    bool filterOriginDBByTurnOver(const std::string& aDBName, const int aMinTurnOver, const int aMaxTurnOver);
+    bool filterOriginDBByTurnOver(const std::string& aDBName);
 
     /*
      * Filter some origin-table(s) in a database and update the filter result to the target result-table.
@@ -255,6 +253,8 @@ class DBFilter {
      *     1) FilterResult100W: result-table being filtered through TurnOver of 100W
     */
     static std::list<std::string> mResultTableNames;
+
+    static std::list<double> mFilterTurnOvers;
 
     /*
      * The name of middle-ware result-table, it contains the origin-details filtered through TurnOver.

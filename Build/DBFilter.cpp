@@ -30,16 +30,35 @@ static char* sqlERR = NULL;
 static double sumShots   = 0.0;
 static double sumForcasters = 0.0;
 static double sumIncome = 0.0;
+static bool sResultTableNamesInited = false;
 
 static std::list<double> sPre15Flowins;
 
 std::list<std::string> DBFilter::mTableNames;
 std::list<std::string> DBFilter::mNewAddedTables;
-//std::list<std::string> DBFilter::mResultTableNames = {"FilterResult20W", "FilterResult40W", "FilterResult60W", "FilterResult80W", "FilterResult100W"};
 std::list<std::string> DBFilter::mResultTableNames;
+std::list<double> DBFilter::mFilterTurnOvers;
+
 std::string DBFilter::mResultTableName         = "FilterResult";
 std::string DBFilter::mTmpResultTableName      = "MiddleWareTable";
 std::string DBFilter::mDiffBigBuySaleTableName = "";
+
+static void initResultTableNames() {
+    //XXX: Make sure the right order here
+    DBFilter::mResultTableNames.push_back("FilterResult20W");
+    DBFilter::mResultTableNames.push_back("FilterResult40W");
+    DBFilter::mResultTableNames.push_back("FilterResult60W");
+    DBFilter::mResultTableNames.push_back("FilterResult80W");
+    DBFilter::mResultTableNames.push_back("FilterResult100W");
+
+    DBFilter::mFilterTurnOvers.push_back(200000.0);
+    DBFilter::mFilterTurnOvers.push_back(400000.0);
+    DBFilter::mFilterTurnOvers.push_back(600000.0);
+    DBFilter::mFilterTurnOvers.push_back(800000.0);
+    DBFilter::mFilterTurnOvers.push_back(1000000.0);
+
+    sResultTableNamesInited = true;
+}
 
 static std::string SELECT_COLUMNS(const std::string& tableName, const std::string& targetColumns) {
     std::string command("");
@@ -132,6 +151,9 @@ static std::string GET_TABLES() {
 DBFilter::DBFilter(const std::string& aDBName)
         : mDBName(aDBName) {
     openOriginDB(aDBName);
+    if (!sResultTableNamesInited) {
+        initResultTableNames();
+    }
 }
 
 DBFilter::~DBFilter() {
@@ -158,7 +180,7 @@ bool DBFilter::clearTableFromOriginDB(const std::string& aDBName, const std::str
     return true;
 }
 
-bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnOver) {
+bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName) {
     LOGI(LOGTAG, "DBName:%s", aDBName.c_str());
     if (!openOriginDB(aDBName)) {
         closeOriginDB(aDBName);
@@ -173,12 +195,29 @@ bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aM
         return false;
     }
 
-    //Step 2: Filter all the tables of the OriginDB and save them in a 'tmp table'
+    //step 2: remove the result-tables and middleware result-tables
+    //FIXME: Hack here, the name of origin-table starts from 'O'.
+    //       result-tables start from 'F' and middleware result-table
+    //       starts from 'M'. 
+    for (int i = 0; i < mResultTableNames.size() + 1; i++) {
+        if (mTableNames.front() <= mTmpResultTableName) {
+            mTableNames.pop_front();
+        } else {
+            break;
+        }
+    }
+    
+        LOGI(LOGTAG, "Failt to get tables from :%s", (mTableNames.front()).c_str());
+
+    //Step 3: Filter all the tables of the OriginDB and save them in a 'tmp table'
     std::list<std::string>::iterator iterResultTable;
-    for (iterResultTable = mResultTableNames.begin(); iterResultTable != mResultTableNames.end(); iterResultTable++) {
-        if (!filterTablesByTurnOver(aDBName, *iterResultTable, aMinTurnover, mTableNames)) {
+    std::list<double>::iterator iterFilterTurnOver;
+    for (iterResultTable = mResultTableNames.begin(), iterFilterTurnOver = mFilterTurnOvers.begin();
+         iterResultTable != mResultTableNames.end(), iterFilterTurnOver != mFilterTurnOvers.end();
+         iterResultTable++, iterFilterTurnOver++) {
+        if (!filterTablesByTurnOver(aDBName, *iterResultTable, *iterFilterTurnOver, mTableNames)) {
             closeOriginDB(aDBName);
-            LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
+            LOGI(LOGTAG, "Fail to filter table:%s of :%s", (*iterResultTable).c_str(), aDBName.c_str());
             return false;
         }
     }
@@ -694,7 +733,7 @@ bool DBFilter::isTableExist(const std::string& DBName, const std::string& tableN
 }
 
 bool DBFilter::getExistingFilterResults(const std::string& aDBName, const std::string& aResultTableName, std::list<BaseResultData>& outFilterResults) {
-    if (!openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, aResultTableName)) {
+    if (!openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, aResultTableName)) {
         closeOriginDB(aDBName);
         return false;
     }
@@ -720,7 +759,7 @@ bool DBFilter::getExistingFilterResults(const std::string& aDBName, const std::s
                           NULL);
     
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt for getExistingFilterResults");
+        LOGI(LOGTAG, "Fail to prepare stmt for getExistingFilterResults from table:%s, :%s", aResultTableName.c_str(), sqlite3_errmsg(mOriginDB));
         return false;
     }
 
@@ -1019,13 +1058,7 @@ bool DBFilter::getBeginAndEndPrice(const std::string& aOriginTableName, double& 
 bool DBFilter::filterTableByTurnOver(const std::string& aDBName, const std::string& aOriginTableName, const int aMinTurnOver) {
     LOGD(LOGTAG, "filterTableByTurnOver for table:%s", aOriginTableName.c_str());
     char strTurnOver[8] = {0};
-
-    if (aMinTurnOver < 100000) {
-        sprintf(strTurnOver, "%d", aMinTurnOver);
-    } else {
-        LOGI(LOGTAG, "overflow of aMinTurnOver:%d", aMinTurnOver);
-        return false;
-    }
+    sprintf(strTurnOver, "%d", aMinTurnOver);
 
     sqlite3_stmt* stmt = NULL;
     int ret = -1;
@@ -1065,7 +1098,9 @@ bool DBFilter::filterTableByTurnOver(const std::string& aDBName, const std::stri
 }
 
 static bool isOriginTable(const std::string& aTableName) {
-      return true;
+    //XXX: All the non-origin-tables have been removed in the step 2 of
+    //     DBFilter::filterOriginDBByTurnOver, so return true direcly
+    return true;
 }
 
 bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const std::string& aResultTableName, const int aMinTurnover, std::list<std::string>& aOriginTableNames) {
