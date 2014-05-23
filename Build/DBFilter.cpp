@@ -35,6 +35,8 @@ static std::list<double> sPre15Flowins;
 
 std::list<std::string> DBFilter::mTableNames;
 std::list<std::string> DBFilter::mNewAddedTables;
+//std::list<std::string> DBFilter::mResultTableNames = {"FilterResult20W", "FilterResult40W", "FilterResult60W", "FilterResult80W", "FilterResult100W"};
+std::list<std::string> DBFilter::mResultTableNames;
 std::string DBFilter::mResultTableName         = "FilterResult";
 std::string DBFilter::mTmpResultTableName      = "MiddleWareTable";
 std::string DBFilter::mDiffBigBuySaleTableName = "";
@@ -172,17 +174,20 @@ bool DBFilter::filterOriginDBByTurnOver(const std::string& aDBName, const int aM
     }
 
     //Step 2: Filter all the tables of the OriginDB and save them in a 'tmp table'
-    if (!filterTablesByTurnOver(aDBName, aMinTurnover, mTableNames)) {
-        closeOriginDB(aDBName);
-        LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
-        return false;
+    std::list<std::string>::iterator iterResultTable;
+    for (iterResultTable = mResultTableNames.begin(); iterResultTable != mResultTableNames.end(); iterResultTable++) {
+        if (!filterTablesByTurnOver(aDBName, *iterResultTable, aMinTurnover, mTableNames)) {
+            closeOriginDB(aDBName);
+            LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
+            return false;
+        }
     }
 
     closeOriginDB(aDBName);
     return true;
 }
 
-bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const int aMinTurnover, const int aMaxTurnOver) {
+bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const std::string& aResultTableName, const int aMinTurnover, const int aMaxTurnOver) {
     LOGI(LOGTAG, "DBName:%s", aDBName.c_str());
     if (!openOriginDB(aDBName)) {
         closeOriginDB(aDBName);
@@ -206,7 +211,7 @@ bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const in
     bool boolRet = false;
     int intRet = -1;
 
-    boolRet = openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, mResultTableName);
+    boolRet = openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, aResultTableName);
     if (!boolRet) {
         LOGI(LOGTAG, "Fail to open table:%s in DB:%s", mResultTableName.c_str(), aDBName.c_str());
         closeOriginDB(aDBName);
@@ -215,7 +220,7 @@ bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const in
     }
 
     targetColumns += DATE;
-    sql = SELECT_COLUMNS(mResultTableName, targetColumns);
+    sql = SELECT_COLUMNS(aResultTableName, targetColumns);
 
     LOGI(LOGTAG, "sql:%s", sql.c_str());
     intRet = sqlite3_prepare_v2(mOriginDB,
@@ -223,10 +228,10 @@ bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const in
                           -1,
                           &stmt,
                           NULL);
-    LOGI(LOGTAG, "prepare stmt to Table:%s, intRet:%d, mOriginDB:%p", mResultTableName.c_str(), intRet, mOriginDB);
+    LOGI(LOGTAG, "prepare stmt to Table:%s, intRet:%d, mOriginDB:%p", aResultTableName.c_str(), intRet, mOriginDB);
 
     if (intRet != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt to Table:%s, intRet:%d, errorMessage:%s", mResultTableName.c_str(), intRet, sqlite3_errmsg(mOriginDB));
+        LOGI(LOGTAG, "Fail to prepare stmt to Table:%s, intRet:%d, errorMessage:%s", aResultTableName.c_str(), intRet, sqlite3_errmsg(mOriginDB));
         closeOriginDB(aDBName);
         exit(1);
         return false;
@@ -284,7 +289,7 @@ bool DBFilter::updateFilterResultByTurnOver(const std::string& aDBName, const in
     }
 
     //Step 3: get the new added origin tables
-    if (!filterTablesByTurnOver(aDBName, aMinTurnover, mNewAddedTables)) {
+    if (!filterTablesByTurnOver(aDBName, aResultTableName, aMinTurnover, mNewAddedTables)) {
         closeOriginDB(aDBName);
         LOGI(LOGTAG, "Fail to filter tables of :%s", aDBName.c_str());
         return false;
@@ -660,8 +665,8 @@ bool DBFilter::getRecommandBuyDateRegions(const int throughWhat, const std::stri
 }
 
 //=======private
-bool DBFilter::openOriginDB(const std::string& name) {
-    return DBWrapper::openDB(name.c_str(), &mOriginDB);
+bool DBFilter::openOriginDB(const std::string& aDBName) {
+    return DBWrapper::openDB(aDBName.c_str(), &mOriginDB);
 }
 
 bool DBFilter::closeOriginDB(const std::string& aDBName) {
@@ -679,7 +684,7 @@ bool DBFilter::openTable(int index, const std::string& aDBName, const std::strin
     return DBWrapper::openTable(index, aDBName, aTableName);
 }
 
-sqlite3* DBFilter::getDBByName(const std::string& DBName) {
+sqlite3* DBFilter::getDBByName(const std::string& aDBName) {
     //JUST FOR NOW
     return NULL;
 }
@@ -688,8 +693,8 @@ bool DBFilter::isTableExist(const std::string& DBName, const std::string& tableN
     return true;
 }
 
-bool DBFilter::getExistingFilterResults(const std::string& aDBName, std::list<BaseResultData>& outFilterResults) {
-    if (!openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mResultTableName)) {
+bool DBFilter::getExistingFilterResults(const std::string& aDBName, const std::string& aResultTableName, std::list<BaseResultData>& outFilterResults) {
+    if (!openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, aResultTableName)) {
         closeOriginDB(aDBName);
         return false;
     }
@@ -707,7 +712,7 @@ bool DBFilter::getExistingFilterResults(const std::string& aDBName, std::list<Ba
     columns += ",";
     columns += FLOWIN_ONE_DAY;
 
-    sql = SELECT_COLUMNS_IN_ORDER(mResultTableName, columns, DATE, false);
+    sql = SELECT_COLUMNS_IN_ORDER(aResultTableName, columns, DATE, false);
     ret = sqlite3_prepare(mOriginDB,
                           sql.c_str(),
                           -1,
@@ -743,7 +748,7 @@ bool DBFilter::getExistingFilterResults(const std::string& aDBName, std::list<Ba
 
     ret = sqlite3_finalize(stmt);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to finalize the stmt to getExistingFilterRsults from Table:%s",  mResultTableName.c_str());
+        LOGI(LOGTAG, "Fail to finalize the stmt to getExistingFilterRsults from Table:%s",  aResultTableName.c_str());
         return false;
     }
     closeOriginDB(aDBName);
@@ -752,8 +757,9 @@ bool DBFilter::getExistingFilterResults(const std::string& aDBName, std::list<Ba
 }
 
 bool DBFilter::computeResultFromTable(const std::string& aDBName,
-                                      const std::string& tmpTableName,
-                                      const std::string& originTableName,
+                                      const std::string& aMiddleWareTableName,
+                                      const std::string& aResultTableName,
+                                      const std::string& aOriginTableName,
                                       const double beginningPrice,
                                       const double endingPrice) {
     //FIXME:MiddleWare and it will be merged to other function
@@ -770,7 +776,7 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName,
 
     keyColumn += SALE_BUY;
 
-    sql = SELECT_COLUMNS_IN_GROUP(tmpTableName, columns, keyColumn);
+    sql = SELECT_COLUMNS_IN_GROUP(aMiddleWareTableName, columns, keyColumn);
 
     ret = sqlite3_prepare(mOriginDB,
                           sql.c_str(),
@@ -783,7 +789,7 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName,
     }
 
     std::list<BaseResultData> existingBaseResults;
-    if (!getExistingFilterResults(aDBName, existingBaseResults)) {
+    if (!getExistingFilterResults(aDBName, aResultTableName, existingBaseResults)) {
         LOGI(LOGTAG, "Fail to getExistingBaseResults, err:%s", sqlite3_errmsg(mOriginDB));
         return false;
     }
@@ -817,7 +823,7 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName,
                 return false;
             }
         }
-        tempBaseResultData.mDate = originTableName;
+        tempBaseResultData.mDate = aOriginTableName;
         tempBaseResultData.mPureFlowInOneDay = tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver;
         LOGI(LOGTAG, "turnover: sale:%f, buy:%f, diff:%f", tempBaseResultData.mSaleTurnOver, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver);
 
@@ -884,18 +890,17 @@ bool DBFilter::computeResultFromTable(const std::string& aDBName,
     }
     ret = sqlite3_finalize(stmt);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to finalize the stmt to finalize tmpTable:%s for originTable:%s", tmpTableName.c_str(), originTableName.c_str());
+        LOGI(LOGTAG, "Fail to finalize the stmt to finalize tmpTable:%s for originTable:%s", aMiddleWareTableName.c_str(), aOriginTableName.c_str());
         return false;
     }
 
     return true;
 }
 
-bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::string& tableName) {
-    //FIXME: the 'tableName" MUST same to mResultTableName
+bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::string& aResultTableName) {
     int ret = 0;
-    if (!openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, tableName)) {
-        LOGI(LOGTAG, "Fail to openTable: %s in DB: %s", tableName.c_str(), aDBName.c_str());
+    if (!openTable(DBWrapper::FILTER_RESULT_TABLE, aDBName, aResultTableName)) {
+        LOGI(LOGTAG, "Fail to openTable: %s in DB: %s", aResultTableName.c_str(), aDBName.c_str());
         closeOriginDB(aDBName);
         return false;
     }
@@ -932,7 +937,7 @@ bool DBFilter::saveBaseResultInBatch(const std::string& aDBName, const std::stri
     }
     
 
-    DBWrapper::insertFilterResultsInBatch(aDBName, tableName, descriptions, mBaseResultDatas, NULL);
+    DBWrapper::insertFilterResultsInBatch(aDBName, aResultTableName, descriptions, mBaseResultDatas, NULL);
     mBaseResultDatas.clear();
 
     closeOriginDB(aDBName);
@@ -971,13 +976,13 @@ bool DBFilter::clearTable(const std::string& tableName) {
     return true;
 }
 
-bool DBFilter::getBeginAndEndPrice(const std::string& tableName, double& beginningPrice, double& endingPrice) {
+bool DBFilter::getBeginAndEndPrice(const std::string& aOriginTableName, double& beginningPrice, double& endingPrice) {
     int ret = -1;
     std::string sql;
     std::string targetColumns = " Price ";
     sqlite3_stmt* stmt = NULL;
 
-    sql = SELECT_COLUMNS(tableName, targetColumns);
+    sql = SELECT_COLUMNS(aOriginTableName, targetColumns);
     LOGD(LOGTAG, "getBeginAndEndPrice, sql:%s", sql.c_str());
     ret = sqlite3_prepare(mOriginDB,
                           sql.c_str(),
@@ -986,7 +991,7 @@ bool DBFilter::getBeginAndEndPrice(const std::string& tableName, double& beginni
                           NULL);
 
     if (ret != SQLITE_OK) {
-        LOGD(LOGTAG, "Fail to prepare stmt to select end Price for table:%s", tableName.c_str());
+        LOGD(LOGTAG, "Fail to prepare stmt to select end Price for table:%s", aOriginTableName.c_str());
         return false;
     }
 
@@ -1004,15 +1009,15 @@ bool DBFilter::getBeginAndEndPrice(const std::string& tableName, double& beginni
 
     ret = sqlite3_finalize(stmt);
     if (ret != SQLITE_OK) {
-        LOGD(LOGTAG, "Fail to finalize the stmt to finalize table:%s", tableName.c_str());
+        LOGD(LOGTAG, "Fail to finalize the stmt to finalize table:%s", aOriginTableName.c_str());
         return false;
     }
 
     return true;
 }
 
-bool DBFilter::filterTableByTurnOver(const std::string& tableName, const int aMinTurnOver) {
-    LOGD(LOGTAG, "filterTableByTurnOver for table:%s", tableName.c_str());
+bool DBFilter::filterTableByTurnOver(const std::string& aDBName, const std::string& aOriginTableName, const int aMinTurnOver) {
+    LOGD(LOGTAG, "filterTableByTurnOver for table:%s", aOriginTableName.c_str());
     char strTurnOver[8] = {0};
 
     if (aMinTurnOver < 100000) {
@@ -1031,7 +1036,7 @@ bool DBFilter::filterTableByTurnOver(const std::string& tableName, const int aMi
     targetColumns += ",";
     targetColumns += SALE_BUY;
 
-    std::string sql = SELECT_TURNOVER_INTO(tableName, mTmpResultTableName, targetColumns, strTurnOver);
+    std::string sql = SELECT_TURNOVER_INTO(aOriginTableName, mTmpResultTableName, targetColumns, strTurnOver);
     LOGD(LOGTAG, "sql:%s", sql.c_str());
 
     ret = sqlite3_prepare(mOriginDB,
@@ -1041,7 +1046,7 @@ bool DBFilter::filterTableByTurnOver(const std::string& tableName, const int aMi
                           NULL);
 
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to prepare stmt to filterTable:%s", tableName.c_str());
+        LOGI(LOGTAG, "Fail to prepare stmt to filterTable:%s", aOriginTableName.c_str());
         return false;
     }
 
@@ -1052,16 +1057,20 @@ bool DBFilter::filterTableByTurnOver(const std::string& tableName, const int aMi
 
     ret = sqlite3_finalize(stmt);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to finalize the stmt to finalize table:%s", tableName.c_str());
+        LOGI(LOGTAG, "Fail to finalize the stmt to finalize table:%s", aOriginTableName.c_str());
         return false;
     }
 
     return true;
 }
 
-bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const int aMinTurnover, std::list<std::string>& tableNames) {
+static bool isOriginTable(const std::string& aTableName) {
+      return true;
+}
+
+bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const std::string& aResultTableName, const int aMinTurnover, std::list<std::string>& aOriginTableNames) {
     //FIXME: Assuming that process all the tables in one DB and then the tables of the other DB.
-    if (tableNames.size() < 1) {
+    if (aOriginTableNames.size() < 1) {
         return true;
     }
     if (!openTable(DBWrapper::FILTER_TRUNOVER_TABLE, aDBName, mTmpResultTableName)) {
@@ -1072,9 +1081,8 @@ bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const int aMin
     }
     std::list<std::string>::iterator iterOfTableName;
     double beginningPrice, endingPrice;
-    for (iterOfTableName = tableNames.begin(); iterOfTableName != tableNames.end(); iterOfTableName++) {
-         if ((*iterOfTableName) != (mResultTableName) &&
-             (*iterOfTableName) != (mTmpResultTableName)) {
+    for (iterOfTableName = aOriginTableNames.begin(); iterOfTableName != aOriginTableNames.end(); iterOfTableName++) {
+         if (isOriginTable(*iterOfTableName)) {
              //Step 1: get Beginning & ending Price
              beginningPrice = endingPrice = 0.0;
              if (!getBeginAndEndPrice(*iterOfTableName, beginningPrice, endingPrice)) {
@@ -1084,7 +1092,7 @@ bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const int aMin
              }
 
              //Step 2: filter
-             if (!filterTableByTurnOver(*iterOfTableName, aMinTurnover)) {
+             if (!filterTableByTurnOver(aDBName, *iterOfTableName, aMinTurnover)) {
                  LOGI(LOGTAG, "Fail to filterTableByTurnOver table:%s in DB:%s", (*iterOfTableName).c_str(), aDBName.c_str());
                  closeOriginDB(aDBName);
                  exit(1);
@@ -1092,7 +1100,7 @@ bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const int aMin
              }
 
              //Step 3: compute && save result 
-             if (!computeResultFromTable(aDBName, mTmpResultTableName, *iterOfTableName, beginningPrice, endingPrice)) {
+             if (!computeResultFromTable(aDBName, mTmpResultTableName, aResultTableName, *iterOfTableName, beginningPrice, endingPrice)) {
                  LOGI(LOGTAG, "Fail to computeResultFromTable table:%s in DB:%s", (*iterOfTableName).c_str(), aDBName.c_str());
                  closeOriginDB(aDBName);
                  exit(1);
@@ -1107,7 +1115,7 @@ bool DBFilter::filterTablesByTurnOver(const std::string& aDBName, const int aMin
     }
 
     ////Step 4: save to final result 
-    if (!saveBaseResultInBatch(aDBName, mResultTableName)) {
+    if (!saveBaseResultInBatch(aDBName, aResultTableName)) {
         LOGI(LOGTAG, "Fail to saveBaseResultInBatch table:%s in DB:%s", (*iterOfTableName).c_str(), aDBName.c_str());
         closeOriginDB(aDBName);
         exit(1);
