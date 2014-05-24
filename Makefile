@@ -1,7 +1,12 @@
 CC:=g++
 LD:=ld
 
+ifdef HOME
+export SRC_DIR=/home/gaia/workspace/yuege
+else
 export SRC_DIR=/home/ramo/Documents/yue/yuege
+endif
+
 export OBJS_DIR=$(SRC_DIR)
 
 CPP_DIR:= \
