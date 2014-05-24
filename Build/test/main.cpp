@@ -116,9 +116,19 @@ bool filterOriginDB() {
     Forecaster* pForecaster = new Forecaster();
     std::list<std::string>::iterator itrOfDBNames = fileNames.begin();
     for (int i = 0; i < fileNames.size(); i++) {
-      pForecaster->forecasteFromFirstPositiveFlowin(*itrOfDBNames);
-      //pForecaster->forecasteFromFirstPositiveFlowin("dbs/002258.db");
-      //printf("fileNames:%s\n", (*itrOfDBNames).c_str());
+      DBFilter* filter = new DBFilter(*itrOfDBNames);
+      //XXX: Make sure the right order here
+      filter->clearTableFromOriginDB("FilterResult100W");
+      filter->clearTableFromOriginDB("FilterResult10W");
+      filter->clearTableFromOriginDB("FilterResult20W");
+      filter->clearTableFromOriginDB("FilterResult30W");
+      filter->clearTableFromOriginDB("FilterResult40W");
+      filter->clearTableFromOriginDB("FilterResult50W");
+      filter->clearTableFromOriginDB("FilterResult60W");
+      filter->clearTableFromOriginDB("FilterResult70W");
+      filter->clearTableFromOriginDB("FilterResult80W");
+      filter->clearTableFromOriginDB("FilterResult90W");
+      //filter->filterOriginDBByTurnOver();
       itrOfDBNames++;
     }
     return true;
@@ -216,8 +226,8 @@ int deleteRows(std::list<std::string>& targetRows) {
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   updateOriginDBs("details");
-   //filterOriginDB();
+   //updateOriginDBs("details");
+   filterOriginDB();
    std::list<std::string> rowsToDelete;
    rowsToDelete.push_back("O20140508");
    rowsToDelete.push_back("O20140509");

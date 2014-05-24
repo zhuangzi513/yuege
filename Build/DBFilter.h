@@ -9,8 +9,8 @@
 #define MAX_COMPUTE_LEN 10
 
 /*
- * This class is used to filter the OriginDatbase and save the result
- * to another Database.
+ * This class is used to filter the OriginDatabase and save the result
+ * into the result-tables in the OriginDatabase.
  * For now, five types Filtered Result:
  * Sale_Big : filtered by Turnover
  * Buy_Big  : filtered by Turnover
@@ -41,27 +41,35 @@ class DBFilter {
 
     DBFilter(const std::string& aDBName);
     ~DBFilter();
-    bool clearTableFromOriginDB(const std::string& aDBName, const std::string& aTableName);
+    /*
+     * Clear the content of the table named "aTableName" in the origin-database
+     *
+     * aTableName: The name of the table to be cleared
+     *
+     * return true if successfully cleared the content of the target table
+    */
+    bool clearTableFromOriginDB(const std::string& aTableName);
 
     /*
      * Filter all the origin-table(s) in the origin database with the specific turnovers in mFilterTurnOvers
      * and save the results into the result-tables.
      *
-     * aDBName:      The origin-data to be filtered;
+     * return true if successfully filter the origin-database
     */
-    bool filterOriginDBByTurnOver(const std::string& aDBName);
+    bool filterOriginDBByTurnOver();
 
     /*
      * Filter some origin-table(s) in a database and update the filter result to the target result-table.
      * Diffing from the mem-func of "filterOriginDBByTurnOver", only the new added origin-table(s) being
      * filtered here.
      *
-     * aDBName:          The origin-data to be filtered;
      * aResultTableName: The name of target result-table;
      * aMinTurnOver:     The bottom edge of the specific turnover region;
      * aMinTurnOver:     The top edge of the specific turnover region;
+     *
+     * return true if successfully update the result-table in the origin-database
     */
-    bool updateFilterResultByTurnOver(const std::string& aDBName, const std::string& aResultTableName, const int aMinTurnover, const int aMaxTurnOver);
+    bool updateFilterResultByTurnOver(const std::string& aResultTableName, const int aMinTurnover, const int aMaxTurnOver);
 
     bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
 
@@ -69,25 +77,79 @@ class DBFilter {
     bool getRecommandBuyDateRegions(const int throughWhat, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
 
   private:
+    /*
+     *
+    */
+    bool init();
+
+    /*
+     * Open the origin-database with the mDBName, it is called only one time for a origin-databse filtering
+     * when initializing the DBFilter in mem-func "init()";
+     *
+     * return true if open the origin-database successfully
+    */
+    bool openOriginDB();
+
+    /*
+     * Close the origin-databse when finish filtering, it is called only one time for a origin-database filtering
+     * in the destructor of the DBFilter.
+     *
+     * aDBName: The origin-database to be filtered;
+     *
+     * return true if close the origin-database successfully
+    */
+    bool closeOriginDB(const std::string& aDBName);
+
+    /*
+     * 
+    */
+    sqlite3* getDBByName(const std::string& DBName);
+
+    /*
+     * Create the target table named "aDBName" of type "index" in the origin-database.
+     * In order to avoid calling "openTable(*)" everywhere during the life cycle of the
+     * DBFilter instance, we must guarantee that all the result-tables have been created
+     * already in the right format.
+     * So, it is called only when initialization of the DBFilter instanc in the "init()".
+     *
+     * aType:       The type of the table, which decide the format of the table;
+     * aDBName:     The name of the origin-database the table located in;
+     * aTableName:  The name of the table to be created;
+     *
+     * return true if successfully created
+    */
+    bool openTable(int aType, const std::string& aTableName);
+
+    /*
+     * Check whether or not the origin-database contains the target table named "aTableName"
+     *
+     * return true if the target table exist in the sepecific origin-database
+    */
+    bool isTableExist(const std::string& aDBName, const std::string& aTableName);
+
     bool getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
     bool getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
     bool getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
-    bool openOriginDB(const std::string& name);
-    bool closeOriginDB(const std::string& name);
-    bool openTable(int index, const std::string& aDBName, const std::string& aTableName);
-    sqlite3* getDBByName(const std::string& DBName);
-    bool isTableExist(const std::string& DBName, const std::string& tableName);
-
-    bool getExistingFilterResults(const std::string& aDBName, const std::string& aResultTableName, std::list<BaseResultData>& outFilterResults);
 
     /*
-     * After filter/compute origin-table, save the BaseResults into a result-table.
+     * Get all the previous filter results in the specific result-table named "aResultTableName", and save them
+     * in the out arg "outFilterResults"
      *
-     * aDBName:              The origin-data to be filtered;
+     * aResultTableName: The name of target result-table;
+     * outFilterResults: The out list accepting the filtered results in the target result-table
+     *
+     * return true if successfully get the filtered result in the target result-table
+    */
+    bool getExistingFilterResults(const std::string& aResultTableName, std::list<BaseResultData>& outFilterResults);
+
+    /*
+     * After filter/compute origin-table, save the BaseResults into the result-table named "aResultTableName"
+     *
      * aResultTableName:     The name of target result-table;
      * 
+     * return true if successfully save the filter result to the result-table
     */
-    bool saveBaseResultInBatch(const std::string& aDBName, const std::string& aResultTableName);
+    bool saveBaseResultInBatch(const std::string& aResultTableName);
 
     /*
      * Mainly two things here:
@@ -97,21 +159,23 @@ class DBFilter {
      *        the BaseResultData from the mTmpResultTableName and save it to mBaseResultDatas, which is used to compute the
      *        till-now results, such as 5/10/20 days flowin till now.
      *
-     * aDBName:              The origin-data to be filtered;
      * aMiddleWareTableName: The name of middle-ware result-table;
      * aResultTableName:     The name of target result-table;
      * aOriginTbaleName:     The name of origin-table to be operated on;
      * aBeginningPrice:      The beginning-price of one day;
      * aEndingPrice:         The ending-price of one day;
      * 
+     * return true if successfully compute the filter result and save it to target result-table 
     */
-    bool computeResultFromTable(const std::string& aDBName, const std::string& aMiddleWareTableName, const std::string& aResultTableName,
+    bool computeResultFromTable(const std::string& aMiddleWareTableName, const std::string& aResultTableName,
                                 const std::string& aOriginTableName, const double aBeginningPrice, const double aEndingPrice);
 
     /*
      * Clear everything in the table of name  "aTableName"
      *
      * aTableName : The target table to be cleared.
+     *
+     * return true if successfully clear the table
     */
     bool clearTable(const std::string& aTableName);
 
@@ -122,27 +186,31 @@ class DBFilter {
      * aOriginTableName:  The name of the origin-table for the specific day;
      * outBeginningPrice: The beginning price gotten from the target origin-table;
      * outEndingPrice:    The ending price gotten from the target origin-table;
+     *
+     * return true if get the beginning/ending price successfully from the origin-table
     */
     bool getBeginAndEndPrice(const std::string& aOriginTableName, double& outBeginningPrice, double& outEndingPrice);
 
     /*
      * Filter an origin-table and save the result into the middle-ware result-table
      *
-     * aDBName:          The name of the origin-database;
      * aOriginTableName: The name of the origin-table;
      * aMinTurnOver:     The bottom edge of turnover.
+     *
+     * return true if filter the origin-table successfully with the specific turnover
     */
-    bool filterTableByTurnOver(const std::string& aDBName, const std::string& aOriginTableName, const int aMinTurnover);
+    bool filterTableByTurnOver(const std::string& aOriginTableName, const int aMinTurnover);
 
     /*
      * Filter some origin-table(s) in a origin-database and save the filter-results into a result-table
      *
-     * aDBName:           The name of the origin-database;
      * aResultTableName:  The name of the result-table;
      * aMinTurnOver:      The bottom edge of turnover;
      * aOriginTableNames: The origin-table(s) to be filtered.
+     *
+     * return true if all the specific origin-tables are successfully filtered with the specific turnover
     */
-    bool filterTablesByTurnOver(const std::string& aDBName, const std::string& aResultTableName, const int aMinTurnover, std::list<std::string>& aOriginTableNames);
+    bool filterTablesByTurnOver(const std::string& aResultTableName, const int aMinTurnover, std::list<std::string>& aOriginTableNames);
 
   public:
     class BaseResultData {
@@ -222,6 +290,12 @@ class DBFilter {
         double mEndPrice;
     };
 
+
+    /*
+     * The filtered results used to fill the result-tables.  we should reset it before any filtering for a
+     * result table. For example, before computing FilterResult20W, we should clear content stored in the
+     * the mBaseResultDatas, which is used to fill FilterResult10W. 
+    */
     std::list<BaseResultData> mBaseResultDatas;
 
     /*
@@ -230,18 +304,26 @@ class DBFilter {
      * filtering operations on a origin-database, usually in the destructor or where error occurs.
     */
     sqlite3* mOriginDB;
+
+    /*
+     * The name of the origin-database.
+    */
     std::string mDBName;
 
     /*
-     * 
+     * All the origin-tables in the origin-database.
     */
-    static std::list<std::string> mTableNames;
+    std::list<std::string> mOriginTableNames;
 
     /*
-     * The names of new added origin-table(s). In the case of database updation, only the new added origin-table(s)
-     * is computed/filtered/saved.
+     * The names of new added origin-table(s) of the origin-databse. In the case of database updation, only
+     * the new added origin-table(s) are computed/filtered and then saved into the result-tables.
     */
-    static std::list<std::string> mNewAddedTables;
+    std::list<std::string> mNewAddedTables;
+
+    /*
+     * XXX:Remove it later
+    */
     static std::string mResultTableName;
 
     /*
@@ -253,7 +335,6 @@ class DBFilter {
      *     1) FilterResult100W: result-table being filtered through TurnOver of 100W
     */
     static std::list<std::string> mResultTableNames;
-
     static std::list<double> mFilterTurnOvers;
 
     /*

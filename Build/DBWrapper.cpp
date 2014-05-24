@@ -273,7 +273,6 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
     sqlite3* targetDB = NULL;
     if (!openDB(aDBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
-        closeDB(aDBName);
         return false;
     }
     ret = sqlite3_prepare(targetDB,
@@ -283,7 +282,6 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
                           NULL);
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d, ret:%d", aDBName.c_str(), errno, ret);
-        closeDB(aDBName);
         return false;
     }
 
@@ -303,11 +301,9 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
 
     if (SQLITE_OK != sqlite3_finalize(stmt)) {
         LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
-        closeDB(aDBName);
         return false;
     }
 
-    closeDB(aDBName);
     return true;
 }
 
