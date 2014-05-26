@@ -13,7 +13,9 @@
 #define LOGTAG   "DBFilter"
 #define DEFAULT_VALUE_FOR_INT -1
 #define MIN_TURNOVER 100
-#define VALUABLE_DAYS_BEFORE 10
+#define DAYS_BEFORE_LEV1 5
+#define DAYS_BEFORE_LEV2 10
+#define DAYS_BEFORE_LEV3 20
 
 #define DATE                " Date "
 #define VOLUME              " Volume "
@@ -23,8 +25,18 @@
 #define SALE_BUY            " SaleBuy "
 #define BEGIN_PRICE         " BeginPrice "
 #define END_PRICE           " EndPrice "
-#define SUM_FLOWIN_TEN_DAYS " SumFlowInTenDay "
-#define FLOWIN_ONE_DAY      " FlowInOneDay "
+
+#define TURNOVER_FLOWIN_ONE_DAY  " TurnOverFlowInOneDay "
+#define VOLUME_FLOWIN_ONE_DAY    " VolumeFlowInOneDay "
+
+#define TURNOVER_FLOWIN_FIVE_DAY " TurnOverFlowInFiveDays "
+#define VOLUME_FLOWIN_FIVE_DAY   " VolumeFlowInFiveDays "
+
+#define TURNOVER_FLOWIN_TEN_DAYS " TurnOverFlowInTenDays "
+#define VOLUME_FLOWIN_TEN_DAYS   " VolumeFlowInTenDays "
+
+#define TURNOVER_FLOWIN_MON_DAYS " TurnOverFlowInMonDays "
+#define VOLUME_FLOWIN_MON_DAYS   " VolumeFlowInMonDays "
 
 static char* sqlERR = NULL;
 static double sumShots   = 0.0;
@@ -139,6 +151,13 @@ static std::string SELECT_IN(const std::string& srcTable, const std::string& tar
     return command;
 }
 
+static std::string REMOVE_TABLE(const std::string& srcTable) {
+    std::string command("");
+    command += " DROP TABLE ";
+    command += srcTable;
+    return command;
+}
+
 static std::string DELETE_FROM_TABLE(const std::string& srcTable) {
     std::string command("");
     command += " DELETE FROM ";
@@ -207,6 +226,14 @@ DBFilter::~DBFilter() {
     mNewAddedTables.clear();
     mOriginTableNames.clear();
     closeOriginDB(mDBName);
+}
+
+bool DBFilter::removeTableFromOriginDB(const std::string& aTableName) {
+    if (!removeTable(aTableName)) {
+        LOGE(LOGTAG, "Fail to clear table:%s", aTableName.c_str());
+        return false;
+    }
+    return true;
 }
 
 bool DBFilter::clearTableFromOriginDB(const std::string& aTableName) {
@@ -335,9 +362,9 @@ bool DBFilter::getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::
 
     targetColumns += DATE;
     targetColumns += ",";
-    targetColumns += SUM_FLOWIN_TEN_DAYS;
+    targetColumns += TURNOVER_FLOWIN_TEN_DAYS;
     targetColumns += ",";
-    targetColumns += FLOWIN_ONE_DAY;
+    targetColumns += TURNOVER_FLOWIN_ONE_DAY;
     sql = SELECT_COLUMNS(mResultTableName, targetColumns);
 
     LOGD(LOGTAG, "sql:%s", sql.c_str());
@@ -405,9 +432,9 @@ bool DBFilter::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, st
 
     targetColumns += DATE;
     targetColumns += ",";
-    targetColumns += SUM_FLOWIN_TEN_DAYS;
+    targetColumns += TURNOVER_FLOWIN_TEN_DAYS;
     targetColumns += ",";
-    targetColumns += FLOWIN_ONE_DAY;
+    targetColumns += TURNOVER_FLOWIN_ONE_DAY;
     sql = SELECT_COLUMNS(mResultTableName, targetColumns);
 
     LOGD(LOGTAG, "sql:%s", sql.c_str());
@@ -523,9 +550,9 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
     targetColumns += ",";
     targetColumns += TURNOVER_BUY;
     targetColumns += ",";
-    targetColumns += FLOWIN_ONE_DAY;
+    targetColumns += TURNOVER_FLOWIN_ONE_DAY;
     targetColumns += ",";
-    targetColumns += SUM_FLOWIN_TEN_DAYS;
+    targetColumns += TURNOVER_FLOWIN_TEN_DAYS;
     targetColumns += ",";
     targetColumns += BEGIN_PRICE;
     targetColumns += ",";
@@ -716,7 +743,7 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
     columns += ",";
     columns += TURNOVER_BUY;
     columns += ",";
-    columns += FLOWIN_ONE_DAY;
+    columns += TURNOVER_FLOWIN_ONE_DAY;
 
     sql = SELECT_COLUMNS_IN_ORDER(aResultTableName, columns, DATE, false);
     ret = sqlite3_prepare(mOriginDB,
@@ -735,21 +762,19 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
      
     double buyTurnOver = 0;
     double saleTurnOver = 0;
-    while(sqlite3_step(stmt) == SQLITE_ROW && i < VALUABLE_DAYS_BEFORE) {
-              std::string date = (char*)sqlite3_column_text(stmt, 0);
-              if (date < "O20140512") {
-                 saleTurnOver = sqlite3_column_double(stmt, 1);
-                 buyTurnOver  = sqlite3_column_double(stmt, 2);
-                  if (buyTurnOver > MIN_TURNOVER
-                      && saleTurnOver > MIN_TURNOVER) {
-                      tempBaseResultData.mDate = date;
-                      tempBaseResultData.mSaleTurnOver = saleTurnOver;
-                      tempBaseResultData.mBuyTurnOver = buyTurnOver;
-                      tempBaseResultData.mPureFlowInOneDay = sqlite3_column_double(stmt, 3);
-                      outFilterResults.push_back(tempBaseResultData);
-                      i++;
-                  }
-          }
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < DAYS_BEFORE_LEV1) {
+        std::string date = (char*)sqlite3_column_text(stmt, 0);
+        saleTurnOver = sqlite3_column_double(stmt, 1);
+        buyTurnOver  = sqlite3_column_double(stmt, 2);
+         if (buyTurnOver > MIN_TURNOVER
+             && saleTurnOver > MIN_TURNOVER) {
+             tempBaseResultData.mDate = date;
+             tempBaseResultData.mSaleTurnOver = saleTurnOver;
+             tempBaseResultData.mBuyTurnOver = buyTurnOver;
+             tempBaseResultData.mTurnOverFlowInOneDay = sqlite3_column_double(stmt, 3);
+             outFilterResults.push_back(tempBaseResultData);
+             i++;
+         }
     }
 
     ret = sqlite3_finalize(stmt);
@@ -757,6 +782,60 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
         LOGE(LOGTAG, "Fail to finalize the stmt to getExistingFilterRsults from Table:%s",  aResultTableName.c_str());
         return false;
     }
+
+    return true;
+}
+
+bool DBFilter::computeFilterResultForLev(int aDaysBefore, std::list<BaseResultData>& aExistingBaseResults, BaseResultData& inoutBaseResult) {
+    //TODO: Find a better way to work around, for the sake of the std::list<T>::end() includes nothing.
+    int i = 0;
+    std::list<DBFilter::BaseResultData>::iterator itr;
+    itr = --(mBaseResultDatas.end());
+
+    for (i = 0; i < aDaysBefore; itr--) {
+        //Only valueable days are counted on
+        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+            LOGD(LOGTAG, "Current TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay)
+            LOGD(LOGTAG, "Current tempBaseResultData.mTurnOverFlowInTenDays:%f,mTurnOverFlowInOneDay:%f", inoutBaseResult.mTurnOverFlowInTenDays,  (*itr)mTurnOverFlowInOneDay);
+            inoutBaseResult.mTurnOverFlowInTenDays += (*itr).mTurnOverFlowInOneDay;
+            i++;
+        }
+
+
+        if (i >=aDaysBefore 
+            || itr == mBaseResultDatas.begin()) {
+            break;
+        }
+    }
+
+    // Step 2: Count in the exsiting FilterResults 
+    itr = aExistingBaseResults.end();
+    LOGD(LOGTAG, "existingBaseResults size:%d, i:%d", aExistingBaseResults.size(), i);
+    while (i < aDaysBefore && itr != aExistingBaseResults.begin()) {
+        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+            inoutBaseResult.mTurnOverFlowInTenDays += (*itr).mTurnOverFlowInOneDay;
+            LOGD(LOGTAG, "Existing TurnOver sale:%f, buy:%f, diff:%f, date:%s", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay, (*itr).mDate.c_str())
+            i++;
+        }
+        itr--;
+    }
+    //TODO: Optimization of Figurout flowin in 10 days
+    //if (mBaseResultDatas.size() > DAYS_BEFORE_LEV1) {
+    //    for (i = 0, itr = mBaseResultDatas.end(); i < DAYS_BEFORE_LEV1 && itr != mBaseResultDatas.begin(); itr--) {
+    //        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+    //            i++;
+    //        }
+    //    }
+    //        LOGD(LOGTAG, "end mTurnOverFlowInTenDays:%f, DAYS_BEFORE_LEV1 pre mTurnOverFlowInTenDays:%f", (*mBaseResultDatas.end()).mTurnOverFlowInTenDays,  (*itr).mTurnOverFlowInTenDays);
+    //    tempBaseResultData.mTurnOverFlowInTenDays = (*mBaseResultDatas.end()).mTurnOverFlowInTenDays + ((*mBaseResultDatas.end()).mTurnOverFlowInTenDays - (*itr).mTurnOverFlowInTenDays);
+    //} else {
+    //    for (i = 0, itr = mBaseResultDatas.end(); i < DAYS_BEFORE_LEV1 && itr != mBaseResultDatas.begin(); itr--) {
+    //        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
+    //            tempBaseResultData.mTurnOverFlowInTenDays += (*itr)mTurnOverFlowInOneDay;
+    //            i++;
+    //        }
+    //    }
+    //}
 
     return true;
 }
@@ -828,70 +907,24 @@ bool DBFilter::computeResultFromTable(const std::string& aMiddleWareTableName,
             }
         }
         tempBaseResultData.mDate = aOriginTableName;
-        tempBaseResultData.mPureFlowInOneDay = tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver;
+        tempBaseResultData.mTurnOverFlowInOneDay = tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver;
         LOGD(LOGTAG, "turnover: sale:%f, buy:%f, diff:%f", tempBaseResultData.mSaleTurnOver, tempBaseResultData.mBuyTurnOver, tempBaseResultData.mBuyTurnOver - tempBaseResultData.mSaleTurnOver);
+        tempBaseResultData.mVolumeFlowInOneDay = tempBaseResultData.mBuyVolume - tempBaseResultData.mSaleVolume;
+        LOGD(LOGTAG, "turnover: sale:%f, buy:%f, diff:%f", tempBaseResultData.mSaleVolume, tempBaseResultData.mBuyVolume, tempBaseResultData.mBuyVolume - tempBaseResultData.mSaleVolume);
 
         tempBaseResultData.mBeginPrice = beginningPrice;
         tempBaseResultData.mEndPrice   = endingPrice;
         mBaseResultDatas.push_back(tempBaseResultData);
 
-        int i = 0;
-        std::list<DBFilter::BaseResultData>::iterator itr;
-
-        // Figureout flowin in 10 days
-        // Step 1: Count in the new added FilterResults 
         LOGD(LOGTAG, " mBaseResultDatas size:%d, i:%d", mBaseResultDatas.size(), i);
 
-        //TODO: Find a better way to work around, for the sake of the std::list<T>::end() includes nothing.
-        itr = --(mBaseResultDatas.end());
-        for (i = 0; i < VALUABLE_DAYS_BEFORE; itr--) {
-            //Only valueable days are counted on
-            if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
-                LOGD(LOGTAG, "Current TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr).mPureFlowInOneDay)
-                LOGD(LOGTAG, "Current tempBaseResultData.mSumFlowInTenDays:%f, mPureFlowInOneDay:%f", tempBaseResultData.mSumFlowInTenDays,  (*itr).mPureFlowInOneDay);
-                tempBaseResultData.mSumFlowInTenDays += (*itr).mPureFlowInOneDay;
-                i++;
-            }
-
-
-            if (i >= VALUABLE_DAYS_BEFORE
-                || itr == mBaseResultDatas.begin()) {
-                break;
-            }
-        }
-
-        // Step 2: Count in the exsiting FilterResults 
-        itr = existingBaseResults.end();
-        LOGD(LOGTAG, "existingBaseResults size:%d, i:%d", existingBaseResults.size(), i);
-        while (i < VALUABLE_DAYS_BEFORE && itr != existingBaseResults.begin()) {
-            if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
-                tempBaseResultData.mSumFlowInTenDays += (*itr).mPureFlowInOneDay;
-                LOGD(LOGTAG, "Existing TurnOver sale:%f, buy:%f, diff:%f, date:%s", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr).mPureFlowInOneDay, (*itr).mDate.c_str())
-                i++;
-            }
-            itr--;
-        }
+        computeFilterResultForLev(DAYS_BEFORE_LEV1, existingBaseResults, tempBaseResultData);
+        computeFilterResultForLev(DAYS_BEFORE_LEV2, existingBaseResults, tempBaseResultData);
+        computeFilterResultForLev(DAYS_BEFORE_LEV3, existingBaseResults, tempBaseResultData);
         mBaseResultDatas.pop_back();
         mBaseResultDatas.push_back(tempBaseResultData);
-
-        //TODO: Optimization of Figurout flowin in 10 days
-        //if (mBaseResultDatas.size() > VALUABLE_DAYS_BEFORE) {
-        //    for (i = 0, itr = mBaseResultDatas.end(); i < VALUABLE_DAYS_BEFORE && itr != mBaseResultDatas.begin(); itr--) {
-        //        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
-        //            i++;
-        //        }
-        //    }
-        //        LOGD(LOGTAG, "end mSumFlowInTenDays:%f, VALUABLE_DAYS_BEFORE pre mSumFlowInTenDays:%f", (*mBaseResultDatas.end()).mSumFlowInTenDays,  (*itr).mSumFlowInTenDays);
-        //    tempBaseResultData.mSumFlowInTenDays = (*mBaseResultDatas.end()).mSumFlowInTenDays + ((*mBaseResultDatas.end()).mSumFlowInTenDays - (*itr).mSumFlowInTenDays);
-        //} else {
-        //    for (i = 0, itr = mBaseResultDatas.end(); i < VALUABLE_DAYS_BEFORE && itr != mBaseResultDatas.begin(); itr--) {
-        //        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
-        //            tempBaseResultData.mSumFlowInTenDays += (*itr).mPureFlowInOneDay;
-        //            i++;
-        //        }
-        //    }
-        //}
     }
+
     ret = sqlite3_finalize(stmt);
     if (ret != SQLITE_OK) {
         LOGE(LOGTAG, "Fail to finalize the stmt to finalize tmpTable:%s for originTable:%s", aMiddleWareTableName.c_str(), aOriginTableName.c_str());
@@ -912,33 +945,67 @@ bool DBFilter::saveBaseResultInBatch(const std::string& aResultTableName) {
     singleDes += D_STMT_FORMAT_FILTER_RESULT;
     descriptions.push_back(singleDes);
 
-    //Result data DES
-    std::list<DBFilter::BaseResultData>::iterator iterOfFilterResult;
-
-    for (iterOfFilterResult = mBaseResultDatas.begin(); iterOfFilterResult != mBaseResultDatas.end(); iterOfFilterResult++) {
-        std::string values("");
-        values += "(";
-        values += (*iterOfFilterResult).mSaleVolume;
-        values += ", ";
-        values += (*iterOfFilterResult).mBuyVolume;
-        values += ", ";
-        values += (*iterOfFilterResult).mSaleTurnOver;
-        values += ", ";
-        values += (*iterOfFilterResult).mBuyTurnOver;
-        values += ", ";
-        values += (*iterOfFilterResult).mSalePrice;
-        values += ", ";
-        values += (*iterOfFilterResult).mBuyPrice;
-        values += ", ";
-        values += (*iterOfFilterResult).mPureFlowInOneDay;
-        values += ", ";
-        values += (*iterOfFilterResult).mSumFlowInTenDays;
-        values += ")";
-    }
+///    //Result data DES
+///    std::list<DBFilter::BaseResultData>::iterator iterOfFilterResult;
+///
+///    for (iterOfFilterResult = mBaseResultDatas.begin(); iterOfFilterResult != mBaseResultDatas.end(); iterOfFilterResult++) {
+///        std::string values("");
+///        values += "(";
+///        values += (*iterOfFilterResult).mSaleVolume;
+///        values += ", ";
+///        values += (*iterOfFilterResult).mBuyVolume;
+///        values += ", ";
+///        values += (*iterOfFilterResult).mSaleTurnOver;
+///        values += ", ";
+///        values += (*iterOfFilterResult).mBuyTurnOver;
+///        values += ", ";
+///        values += (*iterOfFilterResult).mSalePrice;
+///        values += ", ";
+///        values += (*iterOfFilterResult).mBuyPrice;
+///        values += ", ";
+///        values += (*iterOfFilterResult).mTurnOverFlowInOneDay;
+////*
+///        values += ", ";
+///        values += (*iterOfFilterResult).mTurnOverFlowInTenDays;
+///*/
+///        values += ")";
+///    }
     
 
     DBWrapper::insertFilterResultsInBatch(mDBName, aResultTableName, descriptions, mBaseResultDatas, NULL);
     mBaseResultDatas.clear();
+
+    return true;
+}
+
+bool DBFilter::removeTable(const std::string& tableName) {
+    int ret = 0;
+    std::string sql("");
+    sqlite3_stmt* stmt = NULL;
+
+    sql = REMOVE_TABLE(tableName);
+
+    ret = sqlite3_prepare(mOriginDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+
+    if (ret != SQLITE_OK) {
+        LOGE(LOGTAG, "Fail to prepare stmt to clearTable:%s", tableName.c_str());
+        return false;
+    }
+
+    ret = sqlite3_step(stmt);
+    if (ret != SQLITE_DONE) {
+        return false;
+    }
+
+    ret = sqlite3_finalize(stmt);
+    if (ret != SQLITE_OK) {
+        LOGE(LOGTAG, "Fail to finalize the stmt to finalize table:%s", tableName.c_str());
+        return false;
+    }
 
     return true;
 }

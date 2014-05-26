@@ -42,6 +42,15 @@ class DBFilter {
     DBFilter(const std::string& aDBName);
     ~DBFilter();
     /*
+     * Remove the table named "aTableName" in the origin-database
+     *
+     * aTableName: The name of the table to be cleared
+     *
+     * return true if successfully remove the content of the target table
+    */
+    bool removeTableFromOriginDB(const std::string& aTableName);
+
+    /*
      * Clear the content of the table named "aTableName" in the origin-database
      *
      * aTableName: The name of the table to be cleared
@@ -152,6 +161,18 @@ class DBFilter {
     bool saveBaseResultInBatch(const std::string& aResultTableName);
 
     /*
+     * Compute the filtered result for 5/10/20 days before, and save the result into the inout arg "inoutBaseResult"
+     *
+     * aDaysBefore:           The days before we should cover
+     * aExistingBaseResults : The previous filtered results in the result-tables
+     * inoutBaseResult:       The BaseResult contains the base info for current day and we should save the computing result
+     *                        to it.
+     *
+     * return true if successfully compute the filtered result
+    */
+    bool computeFilterResultForLev(int aDaysBefore, std::list<BaseResultData>& aExistingBaseResults, BaseResultData& inoutBaseResult);
+
+    /*
      * Mainly two things here:
      *     1) Compute the sum of TurnOver and Volume in the table of name "mTmpResultTableName", which is the middle-ware
      *        result-table and container the filtered deal details.
@@ -169,6 +190,15 @@ class DBFilter {
     */
     bool computeResultFromTable(const std::string& aMiddleWareTableName, const std::string& aResultTableName,
                                 const std::string& aOriginTableName, const double aBeginningPrice, const double aEndingPrice);
+
+    /*
+     * Remove the table of name  "aTableName" from the origin-database
+     *
+     * aTableName : The target table to be cleared.
+     *
+     * return true if successfully remove the table
+    */
+    bool removeTable(const std::string& aTableName);
 
     /*
      * Clear everything in the table of name  "aTableName"
@@ -224,8 +254,15 @@ class DBFilter {
             , mBuyPrice(0.0)
             , mEndPrice(0.0)
             , mBeginPrice(0.0)
-            , mPureFlowInOneDay(0.0)
-            , mSumFlowInTenDays(0.0) {
+            , mTurnOverFlowInOneDay(0.0)
+            , mVolumeFlowInOneDay(0)
+            , mTurnOverFlowInFiveDays(0.0)
+            , mVolumeFlowInFiveDays(0)
+            , mTurnOverFlowInTenDays(0.0)
+            , mVolumeFlowInTenDays(0)
+            , mTurnOverFlowInMonDays(0.0)
+            , mVolumeFlowInMonDays(0)
+            , mDate("") {
         }
 
         BaseResultData(const BaseResultData& baseResultData) {
@@ -237,12 +274,19 @@ class DBFilter {
             mBuyPrice         = baseResultData.mBuyPrice;
             mBeginPrice       = baseResultData.mBeginPrice;
             mEndPrice         = baseResultData.mEndPrice;
-            mPureFlowInOneDay = baseResultData.mPureFlowInOneDay;
-            mSumFlowInTenDays = baseResultData.mSumFlowInTenDays;
+            mTurnOverFlowInOneDay  = baseResultData.mTurnOverFlowInOneDay;
+            mVolumeFlowInOneDay    = baseResultData.mVolumeFlowInOneDay;
+            mTurnOverFlowInFiveDays = baseResultData.mTurnOverFlowInFiveDays;
+            mVolumeFlowInFiveDays   = baseResultData.mVolumeFlowInFiveDays;
+            mTurnOverFlowInTenDays  = baseResultData.mTurnOverFlowInTenDays;
+            mVolumeFlowInTenDays    = baseResultData.mVolumeFlowInTenDays;
+            mTurnOverFlowInMonDays  = baseResultData.mTurnOverFlowInMonDays;
+            mVolumeFlowInMonDays    = baseResultData.mVolumeFlowInMonDays;
             mDate             = baseResultData.mDate;
         }
 
       public:
+        //Info of current day
         int mSaleVolume;
         int mBuyVolume;
         double mSaleTurnOver;
@@ -251,8 +295,18 @@ class DBFilter {
         double mBuyPrice;
         double mBeginPrice;
         double mEndPrice;
-        double mPureFlowInOneDay;
-        double mSumFlowInTenDays;
+        double mTurnOverFlowInOneDay;
+        int mVolumeFlowInOneDay;
+
+        //Info of previous days
+        double mTurnOverFlowInFiveDays;
+        int mVolumeFlowInFiveDays;
+
+        double mTurnOverFlowInTenDays;
+        int mVolumeFlowInTenDays;
+
+        double mTurnOverFlowInMonDays;
+        int mVolumeFlowInMonDays;
         std::string mDate;
     };
 

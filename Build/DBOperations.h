@@ -12,16 +12,16 @@
 
 #define TABLE_FORMAT_FILTER_TURNOVER_DEF " (Volume, TurnOver, SaleBuy) "
 
-#define TABLE_FORMAT_FILTER_RESULT_DEF " (Date varchar(12), VolumeSale int, TurnOverSale double, PriceSale double, VolumeBuy int, TurnOverBuy double, PriceBuy double, FlowInOneDay double, SumFlowInTenDay double, BeginPrice double, EndPrice double) "
-#define TABLE_FORMAT_FILTER_RESULT " (Date, VolumeSale, TurnOverSale, PriceSale, VolumeBuy, TurnOverBuy, PriceBuy, FlowInOneDay, SumFlowInTenDay, BeginPrice, EndPrice) "
+#define TABLE_FORMAT_FILTER_RESULT_DEF " (Date varchar(12), VolumeSale int, TurnOverSale double, PriceSale double, VolumeBuy int, TurnOverBuy double, PriceBuy double, TurnOverFlowInOneDay double, VolumeFlowInOneDay double, BeginPrice double, EndPrice double, TurnOverFlowInFiveDays double, VolumeFlowInFiveDays int, TurnOverFlowInTenDays double, VolumeFlowInTenDays int, TurnOverFlowInMonDays double, VolumeFlowInMonDays int) "
+#define TABLE_FORMAT_FILTER_RESULT " (Date, VolumeSale, TurnOverSale, PriceSale, VolumeBuy, TurnOverBuy, PriceBuy, TurnOverFlowInOneDay, VolumeFlowInOneDay, BeginPrice, EndPrice, TurnOverFlowInFiveDays, VolumeFlowInFiveDays, TurnOverFlowInTenDays, VolumeFlowInTenDays, TurnOverFlowInMonDays, VolumeFlowInMonDays) "
 
 //default
 #define D_STMT_FORMAT_ORGIN   " VALUES (?, ?, ?, ?, ?, ?) "
-#define D_STMT_FORMAT_FILTER_RESULT " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
+#define D_STMT_FORMAT_FILTER_RESULT " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) "
 
 //spec
 #define S_STMT_FORMAT_ORGIN   " VALUES (:Time, :Price, :Float, :Volume, :TurnOver, :SaleBuy) "
-#define S_STMT_FORMAT_FILTER_RESULT " VALUES (:Time, :VolumeSale, :TurnOverSale, :PriceSale, :VolumeBuy, :TurnOverBuy, :PriceBuy, :FlowInOneDay, :SumFlowInTenDay, :BeginPrice, :EndPrice) "
+#define S_STMT_FORMAT_FILTER_RESULT " VALUES (:Time, :VolumeSale, :TurnOverSale, :PriceSale, :VolumeBuy, :TurnOverBuy, :PriceBuy, :TurnOverFlowInOneDay, :VolumeFlowInOneDay, :BeginPrice, :EndPrice, :TurnOverFlowInFiveDays, :VolumeFlowInFiveDays, :TurnOverFlowInTenDays, :VolumeFlowinTenDays, :TurnOverFlowInMonDays, :VolumeFlowInMonDays) "
 
 #define BUY_IN_CHINESE  "买盘"
 #define SAL_IN_CHINESE  "卖盘"

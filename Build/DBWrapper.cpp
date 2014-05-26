@@ -120,27 +120,63 @@ static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sql
         return false;
     }
 
-    ret = sqlite3_bind_double(stmt, 8, filterResultElement.mPureFlowInOneDay);
+    ret = sqlite3_bind_double(stmt, 8, filterResultElement.mTurnOverFlowInOneDay);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind FlowInOneDay Fail: %f", filterResultElement.mPureFlowInOneDay);
+        LOGI(LOGTAG, "bind mTurnOverFlowInOneDay Fail: %f", filterResultElement.mTurnOverFlowInOneDay);
         return false;
     }
 
-    ret = sqlite3_bind_double(stmt, 9, filterResultElement.mSumFlowInTenDays);
+    ret = sqlite3_bind_double(stmt, 9, filterResultElement.mVolumeFlowInOneDay);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mSumFlowInTenDays);
+        LOGI(LOGTAG, "bind mVolumeFlowInOneDay Fail: %f", filterResultElement.mVolumeFlowInOneDay);
         return false;
     }
 
     ret = sqlite3_bind_double(stmt, 10, filterResultElement.mBeginPrice);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mBeginPrice);
+        LOGI(LOGTAG, "bind mBeginPrice Fail: %f", filterResultElement.mBeginPrice);
         return false;
     }
 
     ret = sqlite3_bind_double(stmt, 11, filterResultElement.mEndPrice);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "bind SumFlowInTenDays Fail: %f", filterResultElement.mEndPrice);
+        LOGI(LOGTAG, "bind mEndPrice Fail: %f", filterResultElement.mEndPrice);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 12, filterResultElement.mTurnOverFlowInFiveDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mTurnOverFlowInFiveDays Fail: %f", filterResultElement.mTurnOverFlowInFiveDays);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 13, filterResultElement.mVolumeFlowInFiveDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mVolumeFlowInFiveDays Fail: %f", filterResultElement.mVolumeFlowInFiveDays);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 14, filterResultElement.mTurnOverFlowInTenDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mTurnOverFlowInTenDays Fail: %f", filterResultElement.mTurnOverFlowInTenDays);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 15, filterResultElement.mVolumeFlowInTenDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mVolumeFlowInTenDays Fail: %f", filterResultElement.mVolumeFlowInTenDays);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 16, filterResultElement.mTurnOverFlowInMonDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind TurnOverFlowInMonDays Fail: %f", filterResultElement.mTurnOverFlowInMonDays);
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 17, filterResultElement.mVolumeFlowInMonDays);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind VolumeFlowInMonDays Fail: %f", filterResultElement.mVolumeFlowInMonDays);
         return false;
     }
 
