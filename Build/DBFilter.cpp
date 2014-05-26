@@ -744,6 +744,8 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
     columns += TURNOVER_BUY;
     columns += ",";
     columns += TURNOVER_FLOWIN_ONE_DAY;
+    columns += ",";
+    columns += VOLUME_FLOWIN_ONE_DAY;
 
     sql = SELECT_COLUMNS_IN_ORDER(aResultTableName, columns, DATE, false);
     ret = sqlite3_prepare(mOriginDB,
@@ -762,19 +764,21 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
      
     double buyTurnOver = 0;
     double saleTurnOver = 0;
-    while (sqlite3_step(stmt) == SQLITE_ROW && i < DAYS_BEFORE_LEV1) {
+    // get as many filter results as we can, because we need the filter results of DAYS_BEFORE_LEV3
+    // days before to compute filter result of the current day.
+    while (sqlite3_step(stmt) == SQLITE_ROW && i < DAYS_BEFORE_LEV3) {
         std::string date = (char*)sqlite3_column_text(stmt, 0);
         saleTurnOver = sqlite3_column_double(stmt, 1);
         buyTurnOver  = sqlite3_column_double(stmt, 2);
-         if (buyTurnOver > MIN_TURNOVER
-             && saleTurnOver > MIN_TURNOVER) {
-             tempBaseResultData.mDate = date;
-             tempBaseResultData.mSaleTurnOver = saleTurnOver;
-             tempBaseResultData.mBuyTurnOver = buyTurnOver;
-             tempBaseResultData.mTurnOverFlowInOneDay = sqlite3_column_double(stmt, 3);
-             outFilterResults.push_back(tempBaseResultData);
-             i++;
-         }
+        //XXX: No matter if there is any valide result in the result-table, every day
+        //     is counted in. Anyway, one day is one day.
+        tempBaseResultData.mDate = date;
+        tempBaseResultData.mSaleTurnOver = saleTurnOver;
+        tempBaseResultData.mBuyTurnOver = buyTurnOver;
+        tempBaseResultData.mTurnOverFlowInOneDay = sqlite3_column_double(stmt, 3);
+        tempBaseResultData.mVolumeFlowInOneDay = sqlite3_column_double(stmt, 4);
+        outFilterResults.push_back(tempBaseResultData);
+        i++;
     }
 
     ret = sqlite3_finalize(stmt);
@@ -789,36 +793,58 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
 bool DBFilter::computeFilterResultForLev(int aDaysBefore, std::list<BaseResultData>& aExistingBaseResults, BaseResultData& inoutBaseResult) {
     //TODO: Find a better way to work around, for the sake of the std::list<T>::end() includes nothing.
     int i = 0;
+    double sumTurnOverFlowin = 0.0;
+    double sumVolumeFlowin = 0;
     std::list<DBFilter::BaseResultData>::iterator itr;
-    itr = --(mBaseResultDatas.end());
 
-    for (i = 0; i < aDaysBefore; itr--) {
-        //Only valueable days are counted on
-        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
-            LOGD(LOGTAG, "Current TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay)
+    // Step 1: Count in the newest filter result;
+    if (!mBaseResultDatas.empty()) {
+        itr = --(mBaseResultDatas.end());
+        for (i = 0; i < aDaysBefore; itr--) {
+            LOGD(LOGTAG, "Current TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay);
             LOGD(LOGTAG, "Current tempBaseResultData.mTurnOverFlowInTenDays:%f,mTurnOverFlowInOneDay:%f", inoutBaseResult.mTurnOverFlowInTenDays,  (*itr)mTurnOverFlowInOneDay);
-            inoutBaseResult.mTurnOverFlowInTenDays += (*itr).mTurnOverFlowInOneDay;
+            sumTurnOverFlowin += (*itr).mTurnOverFlowInOneDay;
+            sumVolumeFlowin   += (*itr).mVolumeFlowInOneDay;
+
+            if (i >=aDaysBefore 
+                || itr == mBaseResultDatas.begin()) {
+                break;
+            }
             i++;
-        }
-
-
-        if (i >=aDaysBefore 
-            || itr == mBaseResultDatas.begin()) {
-            break;
         }
     }
 
-    // Step 2: Count in the exsiting FilterResults 
-    itr = aExistingBaseResults.end();
-    LOGD(LOGTAG, "existingBaseResults size:%d, i:%d", aExistingBaseResults.size(), i);
-    while (i < aDaysBefore && itr != aExistingBaseResults.begin()) {
-        if ((*itr).mBuyTurnOver > MIN_TURNOVER && (*itr).mSaleTurnOver > MIN_TURNOVER) {
-            inoutBaseResult.mTurnOverFlowInTenDays += (*itr).mTurnOverFlowInOneDay;
+    // Step 2: Count in the exsiting filter results 
+    if (!aExistingBaseResults.empty()) {
+        itr = aExistingBaseResults.end();
+        LOGD(LOGTAG, "existingBaseResults size:%d, i:%d", aExistingBaseResults.size(), i);
+        while (i < aDaysBefore && itr != aExistingBaseResults.begin()) {
+            sumTurnOverFlowin += (*itr).mTurnOverFlowInOneDay;
+            sumVolumeFlowin   += (*itr).mVolumeFlowInOneDay;
             LOGD(LOGTAG, "Existing TurnOver sale:%f, buy:%f, diff:%f, date:%s", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay, (*itr).mDate.c_str())
             i++;
+            itr--;
         }
-        itr--;
     }
+
+    switch (aDaysBefore) {
+      case DAYS_BEFORE_LEV1:
+          inoutBaseResult.mTurnOverFlowInFiveDays += sumTurnOverFlowin;
+          inoutBaseResult.mVolumeFlowInFiveDays += sumVolumeFlowin;
+          break;
+      case DAYS_BEFORE_LEV2:
+          inoutBaseResult.mTurnOverFlowInTenDays += sumTurnOverFlowin;
+          inoutBaseResult.mVolumeFlowInTenDays += sumVolumeFlowin;
+          break;
+      case DAYS_BEFORE_LEV3:
+          inoutBaseResult.mTurnOverFlowInMonDays += sumTurnOverFlowin;
+          inoutBaseResult.mVolumeFlowInMonDays += sumVolumeFlowin;
+          break;
+      default:
+          LOGE(LOGTAG, "ComputeFilterResultFor unkown Level:%d", aDaysBefore);
+          return false;
+    }
+
     //TODO: Optimization of Figurout flowin in 10 days
     //if (mBaseResultDatas.size() > DAYS_BEFORE_LEV1) {
     //    for (i = 0, itr = mBaseResultDatas.end(); i < DAYS_BEFORE_LEV1 && itr != mBaseResultDatas.begin(); itr--) {
@@ -914,6 +940,7 @@ bool DBFilter::computeResultFromTable(const std::string& aMiddleWareTableName,
 
         tempBaseResultData.mBeginPrice = beginningPrice;
         tempBaseResultData.mEndPrice   = endingPrice;
+        //
         mBaseResultDatas.push_back(tempBaseResultData);
 
         LOGD(LOGTAG, " mBaseResultDatas size:%d, i:%d", mBaseResultDatas.size(), i);
