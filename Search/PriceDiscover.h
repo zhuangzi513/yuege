@@ -7,19 +7,16 @@ class sqlite3;
 
 class PriceDiscover {
   public:
-    PriceDiscover(const std::string& aDBName);
+    PriceDiscover(const std::string& aDBName, const std::string& aTableName);
     ~PriceDiscover();
 
     /*
-     * Check whether the specific database with name 'aDBName' is in the state
-     * of SideWays.
+     * Return how long it keeps sideways.
      *
-     * aTableName: The input parameter which target at a result table in the OriginDatabase.
+     * Return 0 if error happens
      *
-     * return true if the specific databse is in the state of sideways.
     */
-
-    bool isSteadySideWays(const std::string& aTableName);
+    int howLongSteadySideWays();
 
     /*
      * PhaseOne: Steady SideWays and keep eating in.
@@ -38,7 +35,7 @@ class PriceDiscover {
      * return true if yes
     */
 
-    bool isInPhaseTwo(const std::string& aTableName);
+    bool isInPhaseTwo(const std::string& aTableName, const std::string& aLatestDay);
 
     /*
      * PhaseThree: Flying in the sky, enjoy your self.
@@ -50,6 +47,29 @@ class PriceDiscover {
     bool isInPhaseThree(const std::string& aTableName);
 
   private:
+    /*
+     *
+    */
+    /*
+     * Check whether the specific database with name 'aDBName' is in the state
+     * of SideWays.
+     *
+     * aDaysCount: The length of days to check
+     *
+     * return true if the specific databse is in the state of sideways.
+    */
+
+    bool isSteadySideWays(int aDaysCount);
+
+
+    /*
+     * Get all the valuable info from the target result table;
+     *
+     * aTable: The input parameter which target at a result table.
+     *
+     * return true if successfully get the entire info.
+    */
+    bool getNeededInfoFromTable(const std::string& aTableName);
 
     /*
      * Decide whether the given real-float/abs-float meets the need of sideways
@@ -66,14 +86,50 @@ class PriceDiscover {
     /*
      * Get the PriceData(s) in the result table named by input arg 'aTable'.
      *
-     * aTable: The input parameter which target at a result table.
-     *
      * return true if successfully get the PriceData(s).
     */
-    bool getPriceDatasFromResultTable(const std::string& aTable);
+    bool getPriceDatasFromResultTable();
 
 
   private:
+    class ValueAbleInfo {
+      public:
+        ValueAbleInfo()
+            : mDate("") {
+            mVolumeBuyOneDay = 0;
+            mVolumeSaleOneDay = 0;
+            mVolumeFlowInOneDay = 0;
+
+            mBeginPrice = 0;
+            mEndPrice = 0;
+            mTurnOverBuyOneDay = 0;
+            mTurnOverSaleOneDay = 0;
+            mTurnOverFlowInOneDay = 0;
+        }
+
+        ValueAbleInfo(const ValueAbleInfo& srcValueAbleInfo) {
+            mDate = srcValueAbleInfo.mDate;
+            mVolumeBuyOneDay = srcValueAbleInfo.mVolumeBuyOneDay;
+            mVolumeSaleOneDay = srcValueAbleInfo.mVolumeSaleOneDay;
+            mVolumeFlowInOneDay = srcValueAbleInfo.mVolumeFlowInOneDay;
+
+            mBeginPrice = srcValueAbleInfo.mBeginPrice;
+            mEndPrice = srcValueAbleInfo.mEndPrice;
+            mTurnOverBuyOneDay = srcValueAbleInfo.mTurnOverBuyOneDay;
+            mTurnOverSaleOneDay = srcValueAbleInfo.mTurnOverSaleOneDay;
+            mTurnOverFlowInOneDay = srcValueAbleInfo.mTurnOverFlowInOneDay;
+        }
+
+        int mVolumeBuyOneDay;
+        int mVolumeSaleOneDay;
+        int mVolumeFlowInOneDay;
+        double mBeginPrice;
+        double mEndPrice;
+        double mTurnOverBuyOneDay;
+        double mTurnOverSaleOneDay;
+        double mTurnOverFlowInOneDay;
+        std::string mDate;
+    };
     class PriceData {
       public:
         PriceData() {
@@ -95,10 +151,14 @@ class PriceDiscover {
 
     sqlite3* mOriginDB;
     std::string mDBName;
-    std::list<PriceData>   mPriceDatas;
-    std::list<std::string> mSideWaysInMonDays;
-    std::list<std::string> mSideWaysInTenDays;
-    std::list<std::string> mSideWaysInFiverDays;
+    std::string mTargetResultTableName;
+    //reversed order by Date
+    std::list<PriceData>     mPriceDatas;
+    std::list<ValueAbleInfo> mValuableInfos;
+
+    std::list<std::string>   mSideWaysInMonDays;
+    std::list<std::string>   mSideWaysInTenDays;
+    std::list<std::string>   mSideWaysInFiverDays;
 };
 
 #define PRICE_DISCOVER_H
