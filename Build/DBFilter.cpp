@@ -776,7 +776,8 @@ bool DBFilter::getExistingFilterResults(const std::string& aResultTableName, std
         tempBaseResultData.mSaleTurnOver = saleTurnOver;
         tempBaseResultData.mBuyTurnOver = buyTurnOver;
         tempBaseResultData.mTurnOverFlowInOneDay = sqlite3_column_double(stmt, 3);
-        tempBaseResultData.mVolumeFlowInOneDay = sqlite3_column_double(stmt, 4);
+        tempBaseResultData.mVolumeFlowInOneDay = sqlite3_column_int(stmt, 4);
+        LOGD(LOGTAG, "tempBaseResultData.mVolumeFlowInOneDay:%d", tempBaseResultData.mVolumeFlowInOneDay);
         outFilterResults.push_back(tempBaseResultData);
         i++;
     }
@@ -794,39 +795,46 @@ bool DBFilter::computeFilterResultForLev(int aDaysBefore, std::list<BaseResultDa
     //TODO: Find a better way to work around, for the sake of the std::list<T>::end() includes nothing.
     int i = 0;
     double sumTurnOverFlowin = 0.0;
-    double sumVolumeFlowin = 0;
+    int sumVolumeFlowin = 0;
     std::list<DBFilter::BaseResultData>::iterator itr;
 
     // Step 1: Count in the newest filter result;
     if (!mBaseResultDatas.empty()) {
         itr = --(mBaseResultDatas.end());
         for (i = 0; i < aDaysBefore; itr--) {
-            LOGD(LOGTAG, "Current TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay);
-            LOGD(LOGTAG, "Current tempBaseResultData.mTurnOverFlowInTenDays:%f,mTurnOverFlowInOneDay:%f", inoutBaseResult.mTurnOverFlowInTenDays,  (*itr)mTurnOverFlowInOneDay);
+            LOGD(LOGTAG, "Current TurnOver sale:%f, buy:%f, diff:%f", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr).mTurnOverFlowInOneDay);
             sumTurnOverFlowin += (*itr).mTurnOverFlowInOneDay;
             sumVolumeFlowin   += (*itr).mVolumeFlowInOneDay;
+            LOGD(LOGTAG, "sumTurnOverFlowin:%f, sumVolumeFlowin:%d",  sumTurnOverFlowin, sumVolumeFlowin);
+            LOGD(LOGTAG, "aDaysBefore:%d, i:%d", aDaysBefore, i);
 
+            i++;
             if (i >=aDaysBefore 
                 || itr == mBaseResultDatas.begin()) {
                 break;
             }
-            i++;
         }
     }
 
     // Step 2: Count in the exsiting filter results 
     if (!aExistingBaseResults.empty()) {
-        itr = aExistingBaseResults.end();
+        //FIXME: Because the aExistingBaseResults is in desc order, so count from begin to end.
+        itr = aExistingBaseResults.begin();
         LOGD(LOGTAG, "existingBaseResults size:%d, i:%d", aExistingBaseResults.size(), i);
-        while (i < aDaysBefore && itr != aExistingBaseResults.begin()) {
+        while (i < aDaysBefore && itr != aExistingBaseResults.end()) {
+            LOGD(LOGTAG, "sumTurnOverFlowin:%f, sumVolumeFlowin:%d",  sumTurnOverFlowin, sumVolumeFlowin);
+            LOGD(LOGTAG, "OneDay TurnOverFlowin:%lf, OneDayVolumeFlowin:%d",  (*itr).mTurnOverFlowInOneDay, (*itr).mVolumeFlowInOneDay);
             sumTurnOverFlowin += (*itr).mTurnOverFlowInOneDay;
             sumVolumeFlowin   += (*itr).mVolumeFlowInOneDay;
             LOGD(LOGTAG, "Existing TurnOver sale:%f, buy:%f, diff:%f, date:%s", (*itr).mSaleTurnOver, (*itr).mBuyTurnOver, (*itr)mTurnOverFlowInOneDay, (*itr).mDate.c_str())
+            LOGD(LOGTAG, "sumTurnOverFlowin:%lf, sumVolumeFlowin:%d",  sumTurnOverFlowin, sumVolumeFlowin);
+            LOGD(LOGTAG, "aDaysBefore:%d, i:%d", aDaysBefore, i);
             i++;
-            itr--;
+            itr++;
         }
     }
 
+    LOGD(LOGTAG, "sumTurnOverFlowin:%f, sumVolumeFlowin:%f",  sumTurnOverFlowin, sumVolumeFlowin);
     switch (aDaysBefore) {
       case DAYS_BEFORE_LEV1:
           inoutBaseResult.mTurnOverFlowInFiveDays += sumTurnOverFlowin;

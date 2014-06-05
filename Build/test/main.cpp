@@ -1,5 +1,6 @@
 
 #include "Forecaster.h"
+#include "PriceDiscover.h"
 #include "OriginDBHelper.h"
 #include "DBFilter.h"
 #include "DBWrapper.h"
@@ -134,6 +135,48 @@ bool filterOriginDB() {
     return true;
 }
 
+/*
+bool getSideWaysStock() {
+    std::list<std::string> fileNames;
+    getAllDatabase(fileNames, "dbs");
+    std::list<std::string> listOfDBs;
+    std::list<std::string>::iterator itrOfDBNames = fileNames.begin();
+    for (int i = 0; i < fileNames.size(); i++) {
+      PriceDiscover* priceDiscover = new PriceDiscover(*itrOfDBNames);
+      if (priceDiscover->isSteadySideWays("FilterResult50W")) {
+          printf("SideWay DB:%s\n", (*itrOfDBNames).c_str());
+          listOfDBs.push_back(*itrOfDBNames);
+      }
+      delete priceDiscover;
+      itrOfDBNames++;
+    }
+}
+*/
+
+bool updateFilterResults(const std::string& dirName) {
+    std::list<std::string> originDBNames;
+    std::list<std::string>::iterator itrDB;
+    getAllDatabase(originDBNames, "dbs");
+    originDBNames.sort();
+
+//    for (itrDB = originDBNames.begin(); itrDB != originDBNames.end(); itrDB++) {
+//        //pForecaster->forecasteFromFirstPositiveFlowin(fileNames[i]);
+//        printf("fileNames:%s\n", (*itrDB).c_str());
+//    }
+
+    itrDB     = originDBNames.begin();
+    DBFilter* dbFilter = NULL;
+    while (itrDB != originDBNames.end()) {
+        dbFilter = new DBFilter(*itrDB);
+        dbFilter->clearTableFromOriginDB(DBFilter::mResultTableName);
+        dbFilter->updateFilterResultByTurnOver("FilterResult50W", 500000, 1000000);
+        itrDB++;
+        delete dbFilter;
+    }
+
+    return true;
+}
+
 bool updateOriginDBs(const std::string& dirName) {
     OriginDBHelper* originDBHelper = new OriginDBHelper();
     DBFilter* dbFilter = NULL;
@@ -167,43 +210,16 @@ bool updateOriginDBs(const std::string& dirName) {
         if (stockIDFromDB != stockIDFromDetail) {
             break;
         }
-
-        if (stockIDFromDB == "000665") {
+        if (stockIDFromDB <= "600608") {
             itrDB++;
             itrDetail++;
             continue;
         }
 
          originDBHelper->updateOriginDBForStock(*itrDetail, *itrDB);
-         //dbFilter = new DBFilter(*itrDB);
-         //dbFilter->clearTableFromOriginDB(*itrDB, DBFilter::mResultTableName);
-         //dbFilter->updateFilterResultByTurnOver(*itrDB, 50000, 10000);
          itrDB++;
          itrDetail++;
-         //delete dbFilter;
     }
-
-    //std::string dbName;
-    //while(itrDetail != detailNames.end()
-    //      && itrDB == originDBNames.end()) {
-    //    stockIDFromDetail = (*itrDetail).substr((*itrDetail).find_first_of('/') + 1);
-    //    printf("stockIDFromDetail:%s\n", stockIDFromDetail.c_str());
-    //    if (stockIDFromDB < "600790") {
-    //        itrDB++;
-    //        itrDetail++;
-    //    }
-    //    dbName += "dbs/";
-    //    dbName += stockIDFromDetail;
-    //    dbName += ".db";
-
-    //    originDBHelper->updateOriginDBForStock(*itrDetail, dbName);
-    //    dbFilter = new DBFilter(dbName);
-    //    dbFilter->updateFilterResultByTurnOver(dbName, 50000, 10000);
-    //    delete dbFilter;
-    //    dbName = "";
-
-    //    itrDetail++;
-    //}
 
     return true;
 }
@@ -226,8 +242,9 @@ int deleteRows(std::list<std::string>& targetRows) {
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   //updateOriginDBs("details");
-   filterOriginDB();
+   updateFilterResults("dbs");
+   //filterOriginDB();
+   //getSideWaysStock();
    std::list<std::string> rowsToDelete;
    rowsToDelete.push_back("O20140508");
    rowsToDelete.push_back("O20140509");
