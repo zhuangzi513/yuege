@@ -55,6 +55,9 @@ std::string DBFilter::mDiffBigBuySaleTableName = "";
 
 static void initResultTableNames() {
     //XXX: Make sure the right order here
+    DBFilter::mResultTableNames.push_back("FilterResult20W");
+    DBFilter::mFilterTurnOvers.push_back(200000.0);
+/*
     DBFilter::mResultTableNames.push_back("FilterResult100W");
     DBFilter::mResultTableNames.push_back("FilterResult10W");
     DBFilter::mResultTableNames.push_back("FilterResult20W");
@@ -76,6 +79,7 @@ static void initResultTableNames() {
     DBFilter::mFilterTurnOvers.push_back(700000.0);
     DBFilter::mFilterTurnOvers.push_back(800000.0);
     DBFilter::mFilterTurnOvers.push_back(900000.0);
+*/
 
     sResultTableNamesInited = true;
 }
@@ -340,7 +344,7 @@ bool DBFilter::updateFilterResultByTurnOver(const std::string& aResultTableName,
         itrAll++;
     }
 
-    if (mNewAddedTables.size() <= 1) {
+    if (mNewAddedTables.size() < 1) {
         LOGE(LOGTAG, "No any new added OriginTables, dbName:%s", mDBName.c_str());
         return true;
     }
