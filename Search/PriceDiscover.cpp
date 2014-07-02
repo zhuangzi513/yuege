@@ -24,8 +24,8 @@
 
 #define MIN_PRICE 1.0
 #define PRECISION 0.001
-#define MAX_REAL_FLOAT_SIDE_WAY 0.08
-#define MAX_AVG_ABS_FLOAT_SIDE_WAY 0.008
+#define MAX_REAL_FLOAT_SIDE_WAY 0.07
+#define MAX_AVG_ABS_FLOAT_SIDE_WAY 0.015
 
 static std::string SELECT_COLUMNS(const std::string& tableName, const std::string& targetColumns) {
     std::string command("");
@@ -95,14 +95,15 @@ int PriceDiscover::howLongSteadySideWays() {
  *            4) Price of Big B should be higher than avg price;
  *            5) And the most important, Price keeps floating at a small region.
 */
-bool PriceDiscover::isInPhaseOne(const std::string& aTableName) {
+bool PriceDiscover::isInPhaseOne(const std::string& aTableName, const int aLatestCount) {
     // Step 1: Make sure it is side ways now;
     int lengthOfItSideWays = howLongSteadySideWays();
-    //FIXME: For now, we think it as SideWays when it keeps longer than LEVEL1
-    if (lengthOfItSideWays < LEVEL2) {
+    //FIXME: For now, we think it as SideWays when it keeps longer than LEVEL2
+    if (lengthOfItSideWays < LEVEL3) {
         return false;
     }
 
+/*
     int sumBuyVolume = 0;
     int sumSaleVolume = 0;
     double sumTurnOverSale = 0.0;
@@ -110,9 +111,9 @@ bool PriceDiscover::isInPhaseOne(const std::string& aTableName) {
     double buyPrice = 0.0;
     double salePrice = 0.0;
     int i = 0;
-    std::list<ValueAbleInfo>::iterator itrOfValuableInfos;
+    std::list<ValueAbleInfo>::iterator itrOfValuableInfos = mStartItr;
 
-    for (i = 0, itrOfValuableInfos = mValuableInfos.begin();
+    for (i = 0;
          (i < lengthOfItSideWays) && (itrOfValuableInfos != mValuableInfos.end());
          i++, itrOfValuableInfos++) {
          sumBuyVolume += itrOfValuableInfos->mVolumeBuyOneDay;
@@ -134,6 +135,7 @@ bool PriceDiscover::isInPhaseOne(const std::string& aTableName) {
     if (salePrice > buyPrice) {
         return false;
     }
+*/
 
     return true;
 }
@@ -152,11 +154,44 @@ bool PriceDiscover::isInPhaseOne(const std::string& aTableName) {
  *            4) Comparing with days before, the Volume of Big Deal declines somehow.
  *            5) And the most important, it MUST had gone through Phase One.
 */
-bool PriceDiscover::isInPhaseTwo(const std::string& aTableName, const std::string& aLatestDay) {
-    //Step 1: check whethe it is in the state of Phase One
-    //Step 2: whether the price of today(latest day) has been raised a little
+bool PriceDiscover::isInPhaseTwo(const std::string& aTableName, const int aLatestCount) {
+    int i = 0;
+    double startDayPrice = 0;
+    double endDayPrice = 0;
+    double raisedRatio = 0;
+    std::list<ValueAbleInfo>::iterator itrOfValuableInfos = mValuableInfos.begin();
 
-    return true;
+    endDayPrice = itrOfValuableInfos->mEndPrice;
+    for (i = 0;
+         (i < aLatestCount) && (itrOfValuableInfos != mValuableInfos.end());
+         i++, itrOfValuableInfos++) {
+         startDayPrice = itrOfValuableInfos->mBeginPrice;
+         LOGD(LOGTAG, "DEBUG: endDayPrice:%f, startDayPrice:%f", itrOfValuableInfos->mEndPrice, itrOfValuableInfos->mBeginPrice);
+    }
+
+    LOGD(LOGTAG, "db name:%s, aLatestCount:%d", mDBName.c_str(), aLatestCount);
+    LOGD(LOGTAG, "endDayPrice:%f, startDayPrice:%f", endDayPrice, startDayPrice);
+    if (endDayPrice <= startDayPrice) {
+        return false;
+    }
+    LOGD(LOGTAG, "endDayPrice:%f, startDayPrice:%f", endDayPrice, startDayPrice);
+    raisedRatio = (endDayPrice - startDayPrice) / startDayPrice;
+    LOGD(LOGTAG, "raisedRatio:%f, db name:%s, aLatestCount:%d", raisedRatio, mDBName.c_str(), aLatestCount);
+
+    mStartItr = itrOfValuableInfos;
+    if (!isInPhaseOne(aTableName, aLatestCount)) {
+        return false;
+    }
+    LOGD(LOGTAG, "raisedRatio:%f, db name:%s, aLatestCount:%d", raisedRatio, mDBName.c_str(), aLatestCount);
+
+    if (raisedRatio > 0.03
+        && raisedRatio < 0.1) {
+        LOGI(LOGTAG, "endDayPrice:%f, startDayPrice:%f", endDayPrice, startDayPrice);
+        LOGI(LOGTAG, "raisedRatio:%f, db name:%s, aLatestCount:%d", raisedRatio, mDBName.c_str(), aLatestCount);
+        return true;
+    }
+
+    return false;
 }
 
 /*
@@ -200,7 +235,10 @@ bool PriceDiscover::isSteadySideWays(int aDaysCount) {
         return false;
     }
 
-    endPrice = (--iterPriceData)->mEndPrice;
+    //The mPriceDatas is ordered by date in the way of desc.
+    startPrice = mPriceDatas.back().mBeginPrice;
+    endPrice = mPriceDatas.front().mEndPrice;
+
     realFloat = (endPrice - startPrice)/startPrice;
 
     if (endPrice < MIN_PRICE
@@ -268,11 +306,12 @@ bool PriceDiscover::getNeededInfoFromTable(const std::string& aTableName) {
 }
 
 bool PriceDiscover::isPriceSideWays(double aRealFloat, double aABSFloat, int aDaysCount) {
+    //LOGI(LOGTAG, "PriceDiscover::isPriceSideWays, aRealFloat:%f, avg absFloat:%f", aRealFloat, aABSFloat/aDaysCount);
     if ((fabs(aRealFloat) - MAX_REAL_FLOAT_SIDE_WAY) > PRECISION)  {
         return false;
     }
 
-    if (((aABSFloat/aDaysCount)-MAX_AVG_ABS_FLOAT_SIDE_WAY) > PRECISION) {
+    if (((aABSFloat/aDaysCount) - MAX_AVG_ABS_FLOAT_SIDE_WAY) > PRECISION) {
         return false;
     }
 
@@ -281,7 +320,7 @@ bool PriceDiscover::isPriceSideWays(double aRealFloat, double aABSFloat, int aDa
 
 bool PriceDiscover::getPriceDatasFromResultTable() {
 
-    std::list<ValueAbleInfo>::iterator itrValuAbleInfo = mValuableInfos.begin();
+    std::list<ValueAbleInfo>::iterator itrValuAbleInfo = mStartItr;
     while (itrValuAbleInfo != mValuableInfos.end()) {
         PriceData tmpPriceData;
 

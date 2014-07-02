@@ -56,7 +56,9 @@ std::string DBFilter::mDiffBigBuySaleTableName = "";
 static void initResultTableNames() {
     //XXX: Make sure the right order here
     DBFilter::mResultTableNames.push_back("FilterResult20W");
+    DBFilter::mResultTableNames.push_back("FilterResult50W");
     DBFilter::mFilterTurnOvers.push_back(200000.0);
+    DBFilter::mFilterTurnOvers.push_back(500000.0);
 /*
     DBFilter::mResultTableNames.push_back("FilterResult100W");
     DBFilter::mResultTableNames.push_back("FilterResult10W");

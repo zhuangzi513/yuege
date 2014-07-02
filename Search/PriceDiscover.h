@@ -25,7 +25,7 @@ class PriceDiscover {
      *
      * return true if yes
     */
-    bool isInPhaseOne(const std::string& aTableName);
+    bool isInPhaseOne(const std::string& aTableName, const int aLatestCount);
 
     /*
      * PhaseTwo: End of Steady SideWays and about to flying.
@@ -35,7 +35,7 @@ class PriceDiscover {
      * return true if yes
     */
 
-    bool isInPhaseTwo(const std::string& aTableName, const std::string& aLatestDay);
+    bool isInPhaseTwo(const std::string& aTableName, const int aLatestCount);
 
     /*
      * PhaseThree: Flying in the sky, enjoy your self.
@@ -152,6 +152,8 @@ class PriceDiscover {
     sqlite3* mOriginDB;
     std::string mDBName;
     std::string mTargetResultTableName;
+    std::list<ValueAbleInfo>::iterator mStartItr;
+
     //reversed order by Date
     std::list<PriceData>     mPriceDatas;
     std::list<ValueAbleInfo> mValuableInfos;

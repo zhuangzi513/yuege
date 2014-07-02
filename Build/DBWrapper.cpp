@@ -208,7 +208,7 @@ bool DBWrapper::openDB(const std::string& DBName, sqlite3** ppDB) {
     errno = 0;
     ret = sqlite3_open(DBName.c_str(), ppDB);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to open Database with the name of %s, errno:%d", DBName.c_str(), errno);
+        LOGI(LOGTAG, "Fail to open Database with the name of %s, errno:%d, errmessage:%s", DBName.c_str(), errno, sqlite3_errmsg(targetDB));
         exit(1);
         return false;
     }

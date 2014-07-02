@@ -219,6 +219,7 @@ bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName, cons
     LOGI(LOGTAG, "mCurDBName:%s", mCurDBName.c_str());
     LOGI(LOGTAG, "mTableName:%s", mTableName.c_str());
     std::list<XLSReader::XLSElement*> detailInfoList;
+    std::list<XLSReader::XLSElement*>::iterator itr;
     if (!TextXLSReader::getElementsFrom(fileName, detailInfoList)) {
         printf("Fail to parse :%s\n", fileName.c_str());
         return false;
@@ -227,6 +228,11 @@ bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName, cons
     if (!initOriginDBWithDetailInfo(detailInfoList)) {
         printf("Fail to Fill Database:%s with the file:%s, errno:%d\n", mCurDBName.c_str(), fileName.c_str(), errno);
         return false;
+    }
+
+    for (itr = detailInfoList.begin(); itr != detailInfoList.end(); itr++) {
+        delete *itr;
+        //detailInfoList.pop_front();
     }
 
     return true;

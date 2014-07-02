@@ -135,15 +135,14 @@ bool filterOriginDB() {
     return true;
 }
 
-/*
 bool getSideWaysStock() {
     std::list<std::string> fileNames;
     getAllDatabase(fileNames, "dbs");
     std::list<std::string> listOfDBs;
     std::list<std::string>::iterator itrOfDBNames = fileNames.begin();
     for (int i = 0; i < fileNames.size(); i++) {
-      PriceDiscover* priceDiscover = new PriceDiscover(*itrOfDBNames);
-      if (priceDiscover->isSteadySideWays("FilterResult50W")) {
+      PriceDiscover* priceDiscover = new PriceDiscover(*itrOfDBNames, "FilterResult20W");
+      if (priceDiscover->isInPhaseTwo("FilterResult20W", 1)) {
           printf("SideWay DB:%s\n", (*itrOfDBNames).c_str());
           listOfDBs.push_back(*itrOfDBNames);
       }
@@ -151,7 +150,6 @@ bool getSideWaysStock() {
       itrOfDBNames++;
     }
 }
-*/
 
 bool updateFilterResults(const std::string& dirName) {
     std::list<std::string> originDBNames;
@@ -169,7 +167,18 @@ bool updateFilterResults(const std::string& dirName) {
     while (itrDB != originDBNames.end()) {
         dbFilter = new DBFilter(*itrDB);
         dbFilter->clearTableFromOriginDB(DBFilter::mResultTableName);
+        dbFilter->updateFilterResultByTurnOver("FilterResult10W", 100000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult20W", 200000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult30W", 300000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult40W", 400000, 1000000);
         dbFilter->updateFilterResultByTurnOver("FilterResult50W", 500000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult60W", 600000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult70W", 700000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult80W", 800000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult90W", 900000, 1000000);
+        dbFilter->updateFilterResultByTurnOver("FilterResult100W", 1000000, 1000000);
+//        dbFilter->updateFilterResultByTurnOver("FilterResult20W", 200000, 1000000);
+//        dbFilter->updateFilterResultByTurnOver("FilterResult50W", 500000, 1000000);
         itrDB++;
         delete dbFilter;
     }
@@ -210,7 +219,7 @@ bool updateOriginDBs(const std::string& dirName) {
         if (stockIDFromDB != stockIDFromDetail) {
             break;
         }
-        if (stockIDFromDB <= "600608") {
+        if (stockIDFromDB < "601618") {
             itrDB++;
             itrDetail++;
             continue;
@@ -242,9 +251,10 @@ int deleteRows(std::list<std::string>& targetRows) {
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   updateFilterResults("dbs");
+   //updateOriginDBs("details");
+   //updateFilterResults("dbs");
    //filterOriginDB();
-   //getSideWaysStock();
+   getSideWaysStock();
    std::list<std::string> rowsToDelete;
    rowsToDelete.push_back("O20140508");
    rowsToDelete.push_back("O20140509");
