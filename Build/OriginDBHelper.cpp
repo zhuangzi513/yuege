@@ -163,6 +163,7 @@ bool OriginDBHelper::updateOriginDBForStock(const std::string& fullPathofDetails
     std::list<std::string> existingTables;
     if (!DBWrapper::getAllTablesOfDB(fullPathofOriginDB, existingTables)) {
         LOGI(LOGTAG, "Fail to get tables from originDB: %s", fullPathofOriginDB.c_str());
+        DBWrapper::closeDB(fullPathofOriginDB);
         return false;
     }
     existingTables.sort();
@@ -192,7 +193,18 @@ bool OriginDBHelper::updateOriginDBForStock(const std::string& fullPathofDetails
 //#endif
 
     mOriginFiles.clear();
+    DBWrapper::closeDB(fullPathofOriginDB);
     return true;
+}
+
+template <typename T>
+inline void releaseList(std::list<T*>& list) {
+    typename std::list<T*>::iterator itr;
+    for (itr = list.begin(); itr != list.end(); ++itr) {
+         delete *itr;
+    }
+
+    list.clear();
 }
 
 bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName, const std::string& originDBName) {
@@ -221,19 +233,24 @@ bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName, cons
     std::list<XLSReader::XLSElement*> detailInfoList;
     std::list<XLSReader::XLSElement*>::iterator itr;
     if (!TextXLSReader::getElementsFrom(fileName, detailInfoList)) {
-        printf("Fail to parse :%s\n", fileName.c_str());
+        LOGI(LOGTAG, "Fail to parse :%s\n", fileName.c_str());
         return false;
     }
 
     if (!initOriginDBWithDetailInfo(detailInfoList)) {
-        printf("Fail to Fill Database:%s with the file:%s, errno:%d\n", mCurDBName.c_str(), fileName.c_str(), errno);
+        LOGI(LOGTAG, "Fail to Fill Database:%s with the file:%s, errno:%d\n", mCurDBName.c_str(), fileName.c_str(), errno);
+        releaseList(detailInfoList);
         return false;
     }
 
+    releaseList(detailInfoList);
+/*
     for (itr = detailInfoList.begin(); itr != detailInfoList.end(); itr++) {
         delete *itr;
         //detailInfoList.pop_front();
     }
+    detailInfoList.clear();
+*/
 
     return true;
 }
@@ -325,7 +342,9 @@ bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*
     LOGI(LOGTAG, "openTable, mCurDBName:%s, mTableName:%s", mCurDBName.c_str(), mTableName.c_str());
     const std::string curDBName(mCurDBName);
     const std::string curTableName(mTableName);
-    if (!DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, curDBName, curTableName)) {
+    // If there is already an OrginTable with the same to currTableName, Abort!
+    if (DBWrapper::SUCC_OPEN_TABLE != DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, curDBName, curTableName)) {
+        LOGE(LOGTAG, "Fail to open table:%s or it has been there already", curTableName.c_str());
         return false;
     }
 

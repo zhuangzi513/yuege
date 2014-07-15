@@ -245,7 +245,7 @@ bool DBWrapper::endBatch(sqlite3* db) {
     return true;
 }
 
-bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName) {
+int DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName) {
     int ret = DEFAULT_VALUE_FOR_INT;
     std::string tableFormat;
 
@@ -271,7 +271,7 @@ bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const 
 
       default:
         LOGI(LOGTAG, "Unknown Table type :%d \n", typeOfTable);
-        return false;
+        return FAIL_OPEN_TABLE;
     }
 
     sqlite3* targetDB = getDBByName(DBName);
@@ -281,24 +281,24 @@ bool DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const 
     if (!targetDB && !openDB(DBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to get Database with name %s\n", DBName.c_str());
         LOGI(LOGTAG, "And fail to open a new Database with name %s either\n", DBName.c_str());
-        return false;
+        return FAIL_OPEN_TABLE;
     }
 
     ret = sqlite3_exec(targetDB, sql.c_str(), NULL, NULL, &sqlERR);
     if (ret != SQLITE_OK) {
         std::string error(sqlERR);
         if (error.find("already exists")) {
-            LOGI(LOGTAG, "%s\n", sqlERR);
+            LOGD(LOGTAG, "%s\n", sqlERR);
             LOGI(LOGTAG, "There is already a Table with name %s\n", tableName.c_str());
-            return true;
+            return ALRD_OPEN_TABLE;
         }
 
         LOGI(LOGTAG, "%s\n", sqlERR);
         LOGI(LOGTAG, "Fail to open the table with name %s\n", tableName.c_str());
-        return false;
+        return FAIL_OPEN_TABLE;
     }
 
-    return true;
+    return SUCC_OPEN_TABLE;
 }
 
 bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::string>& tableNames) {

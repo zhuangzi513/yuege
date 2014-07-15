@@ -720,7 +720,8 @@ bool DBFilter::openTable(int aType, const std::string& aTableName) {
         exit(1);
     }
 
-    if (!DBWrapper::openTable(aType, mDBName, aTableName)) {
+    //If it already existing one FilterResult, that's ok
+    if (DBWrapper::FAIL_OPEN_TABLE != DBWrapper::openTable(aType, mDBName, aTableName)) {
         LOGE(LOGTAG, "CRITICAL ERROR: Fail to open table:%s in database:%s", aTableName.c_str(), mDBName.c_str());
         exit(1);
     }

@@ -18,6 +18,7 @@
 #define  TURNOVER_BUY            " TurnOverBuy "
 #define  TURNOVER_FLOWIN_ONE_DAY " TurnOverFlowInOneDay "
 
+#define LEVEL4  40
 #define LEVEL3  20
 #define LEVEL2  10
 #define LEVEL1  5
@@ -25,7 +26,7 @@
 #define MIN_PRICE 1.0
 #define PRECISION 0.001
 #define MAX_REAL_FLOAT_SIDE_WAY 0.07
-#define MAX_AVG_ABS_FLOAT_SIDE_WAY 0.015
+#define MAX_AVG_ABS_FLOAT_SIDE_WAY 0.01
 
 static std::string SELECT_COLUMNS(const std::string& tableName, const std::string& targetColumns) {
     std::string command("");
@@ -73,13 +74,16 @@ PriceDiscover::~PriceDiscover() {
 }
 
 int PriceDiscover::howLongSteadySideWays() {
-   if (isSteadySideWays(LEVEL3)) {
+   if (isSteadySideWays(LEVEL4)) {
+       return LEVEL4;
+   } else if (isSteadySideWays(LEVEL3)) {
        return LEVEL3;
-   } else if (isSteadySideWays(LEVEL2)) {
+   }/* else if (isSteadySideWays(LEVEL2)) {
        return LEVEL2;
    } else if (isSteadySideWays(LEVEL1)) {
        return LEVEL1;
    }
+*/
 
    return 0;
 }
@@ -98,8 +102,8 @@ int PriceDiscover::howLongSteadySideWays() {
 bool PriceDiscover::isInPhaseOne(const std::string& aTableName, const int aLatestCount) {
     // Step 1: Make sure it is side ways now;
     int lengthOfItSideWays = howLongSteadySideWays();
-    //FIXME: For now, we think it as SideWays when it keeps longer than LEVEL2
-    if (lengthOfItSideWays < LEVEL3) {
+    //FIXME: For now, we think it as SideWays when it keeps longer than LEVEL4
+    if (lengthOfItSideWays < LEVEL4) {
         return false;
     }
 
@@ -175,7 +179,7 @@ bool PriceDiscover::isInPhaseTwo(const std::string& aTableName, const int aLates
         return false;
     }
     LOGD(LOGTAG, "endDayPrice:%f, startDayPrice:%f", endDayPrice, startDayPrice);
-    raisedRatio = (endDayPrice - startDayPrice) / startDayPrice;
+    raisedRatio = fabs((endDayPrice - startDayPrice) / startDayPrice);
     LOGD(LOGTAG, "raisedRatio:%f, db name:%s, aLatestCount:%d", raisedRatio, mDBName.c_str(), aLatestCount);
 
     mStartItr = itrOfValuableInfos;
@@ -184,8 +188,8 @@ bool PriceDiscover::isInPhaseTwo(const std::string& aTableName, const int aLates
     }
     LOGD(LOGTAG, "raisedRatio:%f, db name:%s, aLatestCount:%d", raisedRatio, mDBName.c_str(), aLatestCount);
 
-    if (raisedRatio > 0.03
-        && raisedRatio < 0.1) {
+    if (raisedRatio >= 0.04
+        && raisedRatio <= 0.066) {
         LOGI(LOGTAG, "endDayPrice:%f, startDayPrice:%f", endDayPrice, startDayPrice);
         LOGI(LOGTAG, "raisedRatio:%f, db name:%s, aLatestCount:%d", raisedRatio, mDBName.c_str(), aLatestCount);
         return true;
@@ -216,8 +220,8 @@ bool PriceDiscover::isSteadySideWays(int aDaysCount) {
     int i = 0;
     double absFloat = 0.0;
     double realFloat = 0.0;
-    double startPrice = iterPriceData->mBeginPrice;
-    double endPrice = 0.0;
+    double startPrice = 0.0;
+    double endPrice = iterPriceData->mEndPrice;
 
     for (iterPriceData = mPriceDatas.begin();
          (iterPriceData != mPriceDatas.end()) && (i < aDaysCount);
@@ -236,10 +240,10 @@ bool PriceDiscover::isSteadySideWays(int aDaysCount) {
     }
 
     //The mPriceDatas is ordered by date in the way of desc.
-    startPrice = mPriceDatas.back().mBeginPrice;
-    endPrice = mPriceDatas.front().mEndPrice;
+    startPrice = iterPriceData->mBeginPrice;
 
     realFloat = (endPrice - startPrice)/startPrice;
+    //LOGI(LOGTAG, "DB:%s, endPrice:%f, startPrice:%f, realFloat:%f", mDBName.c_str(), endPrice, startPrice, realFloat);
 
     if (endPrice < MIN_PRICE
         || startPrice < MIN_PRICE) {

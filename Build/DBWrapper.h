@@ -30,11 +30,16 @@ class DBWrapper {
       FILTER_TABLE,
       FINAL_TABLE
     };
+    enum OPEN_TABLE_RET {
+      FAIL_OPEN_TABLE = 0, // Fail to open table
+      SUCC_OPEN_TABLE,     // Success to open table
+      ALRD_OPEN_TABLE      // The requesting table is already existing, in which case OriginHelper should return false but Filter return true
+    };
     DBWrapper();
     ~DBWrapper();
 
     static DBWrapper* getInstance();
-    static bool openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName);
+    static int openTable(int32_t typeOfTable, const std::string& DBName, const std::string& tableName);
     static bool openDB(const std::string& DBName, sqlite3** outDB);
     static bool closeDB(const std::string& DBName);
     static bool beginBatch(sqlite3* db);

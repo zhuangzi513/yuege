@@ -41,14 +41,14 @@ bool TextXLSReader::getElementsFrom(const std::string& fileName, std::list<XLSRe
     //ios::in : read the file content into the mem
     //1       : readonly
     fileStream.open(fileName.c_str(), std::ios::in);
-    LOGI(LOGTAG, "errno:%d", errno);
+    LOGD(LOGTAG, "errno:%d", errno);
     if (fileStream.fail()) {
-        //LOG ERR
+        LOGE(LOGTAG, "Fail to open file:%s, errno:%d", fileName.c_str(), errno);
         return false;
     }
 
     if (!readFile(fileStream, out)) {
-        //LOG ERR
+        LOGE(LOGTAG, "Fail to read file:%s, errno:%d", fileName.c_str(), errno);
         return false;
     }
 
