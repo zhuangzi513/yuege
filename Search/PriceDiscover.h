@@ -9,6 +9,10 @@ class PriceDiscover {
   public:
     PriceDiscover(const std::string& aDBName, const std::string& aTableName);
     ~PriceDiscover();
+// Begin TurnOverDiscover
+    int isDBBuyMoreThanSale(const std::string& aDBName, int aDayCount, int pre, float ratio);
+// End TurnOverDiscover
+
 
     /*
      * Return how long it keeps sideways.

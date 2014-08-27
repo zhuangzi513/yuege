@@ -120,6 +120,7 @@ static bool getFilesNeedToUpdate(std::list<std::string>& existingTables,
     while (itrTable != existingTables.end()
         && itrDetail != originFiles.end()) {
         if ((*itrTable) == "FilterResult"
+            || (*itrTable) == "FilterResult20W"
             || ((*itrTable) == "MiddleWareTable")) {
             itrTable++;
             continue;
@@ -133,16 +134,18 @@ static bool getFilesNeedToUpdate(std::list<std::string>& existingTables,
             itrTable++;
             itrDetail++;
             continue;    
-        } else if (tableNO < fileNO) {
+        } else if (tableNO != fileNO) {
             //The originFile has not been added
             //AddTheFileToDB
             outFilesNeedToUpdate.push_back(*itrDetail);
             itrDetail++;
-        } else {
+        }
+        /* else {
             //For the sake of removing empty origin files
             LOGI(LOGTAG, "tableNO: %s, fileNO:%s", tableNO.c_str(), fileNO.c_str());
             itrTable++;
         }
+        */
     }
 
     // the remaining origin files to update
