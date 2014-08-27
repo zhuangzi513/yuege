@@ -73,6 +73,43 @@ PriceDiscover::~PriceDiscover() {
     DBWrapper::closeDB(mDBName);
 }
 
+// Begin TurnOverDiscover
+int PriceDiscover::isDBBuyMoreThanSale(const std::string& aTableName, int aDayCount, int pre, float ratio) {
+    std::list<ValueAbleInfo>::iterator itrOfValuableInfos = mValuableInfos.begin();
+    for (int i = 0; i < pre; i++) {
+         ++itrOfValuableInfos;
+    }
+    double endPrice = itrOfValuableInfos->mEndPrice;
+    double startPrice = (++itrOfValuableInfos)->mBeginPrice;
+
+    double sumBuy = 0.0;
+    double sumSale = 0.0;
+    int i = 0;
+    itrOfValuableInfos = mValuableInfos.begin();
+    for (; itrOfValuableInfos != mValuableInfos.end() && i < aDayCount;
+         ++i, ++itrOfValuableInfos) {
+         sumBuy += itrOfValuableInfos->mTurnOverBuyOneDay;
+         sumSale += itrOfValuableInfos->mTurnOverSaleOneDay;
+    }
+    
+    //LOGI(LOGTAG, "sumBuy:%f, sumSale:%f", sumBuy, sumSale);
+    if (sumBuy < 200 || sumSale < 200) {
+        return -1;
+    }
+
+    if ( sumBuy < ( sumSale * ratio)) {
+        return -1;
+    }
+
+    if (((endPrice - startPrice)/startPrice) > 0.01) {
+        return 1;
+    }
+
+    return 0;
+}
+// End TurnOverDiscover
+
+
 int PriceDiscover::howLongSteadySideWays() {
    if (isSteadySideWays(LEVEL4)) {
        return LEVEL4;
@@ -166,6 +203,7 @@ bool PriceDiscover::isInPhaseTwo(const std::string& aTableName, const int aLates
     std::list<ValueAbleInfo>::iterator itrOfValuableInfos = mValuableInfos.begin();
 
     endDayPrice = itrOfValuableInfos->mEndPrice;
+    startDayPrice = itrOfValuableInfos->mBeginPrice;
     for (i = 0;
          (i < aLatestCount) && (itrOfValuableInfos != mValuableInfos.end());
          i++, itrOfValuableInfos++) {

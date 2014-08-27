@@ -56,9 +56,7 @@ std::string DBFilter::mDiffBigBuySaleTableName = "";
 static void initResultTableNames() {
     //XXX: Make sure the right order here
     DBFilter::mResultTableNames.push_back("FilterResult20W");
-    DBFilter::mResultTableNames.push_back("FilterResult50W");
     DBFilter::mFilterTurnOvers.push_back(200000.0);
-    DBFilter::mFilterTurnOvers.push_back(500000.0);
 /*
     DBFilter::mResultTableNames.push_back("FilterResult100W");
     DBFilter::mResultTableNames.push_back("FilterResult10W");
@@ -723,7 +721,7 @@ bool DBFilter::openTable(int aType, const std::string& aTableName) {
     //If it already existing one FilterResult, that's ok
     if (DBWrapper::FAIL_OPEN_TABLE != DBWrapper::openTable(aType, mDBName, aTableName)) {
         LOGE(LOGTAG, "CRITICAL ERROR: Fail to open table:%s in database:%s", aTableName.c_str(), mDBName.c_str());
-        exit(1);
+        //exit(1);
     }
 
     return true;

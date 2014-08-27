@@ -15,6 +15,9 @@ TurnOverDiscover::~TurnOverDiscover() {
     mDBSFlowIn.clear();
 }
 
+bool TurnOverDiscover::isDBBuyMoreThanSale(const std::string& aDBName)
+    return true;
+}
 
 bool TurnOverDiscover::isDBFlowIn(const std::string& aDBName) {
     if (!isDBFlowInFiveDays()) {
