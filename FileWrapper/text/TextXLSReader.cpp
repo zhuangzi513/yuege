@@ -30,7 +30,7 @@ TextXLSReader::~TextXLSReader() {
 
 //static
 bool TextXLSReader::getElementsFrom(const std::string& fileName, std::list<XLSReader::XLSElement*>& out) {
-    LOGI(LOGTAG, "fileName:%s", fileName.c_str());
+    LOGD(LOGTAG, "fileName:%s", fileName.c_str());
     if (fileName.empty()) {
         //LOG ERR
         return false;

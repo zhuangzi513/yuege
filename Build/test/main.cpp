@@ -18,7 +18,7 @@
 #include <errno.h>
 
 #define EXAMPLE_XLS_NAME "600001/2013/0101.xls"
-#define DAY_OF_TARGET    "O20141107"
+#define DAY_OF_TARGET    "O20141111"
 #define NUM_THREAD 20
 
 int searchCallback(void *arg1, int arg2, char **arg3, char **arg4) {
@@ -208,7 +208,8 @@ void getBankerInChargingDB() {
     std::list<std::string>::iterator itrOfDBNames = fileNames.begin();
     TurnOverDiscover* pTurnOverDiscover = NULL;
     for (int i = 0; i < fileNames.size(); i++) {
-      pTurnOverDiscover = new TurnOverDiscover(*itrOfDBNames, "FilterResult30W");
+      pTurnOverDiscover = new TurnOverDiscover(*itrOfDBNames, "FilterResult20W");
+/*
       if (pTurnOverDiscover->isTodayBankerInCharge(DAY_OF_TARGET)) {
           if (pTurnOverDiscover->isTodayNeutralBankerInCharge(DAY_OF_TARGET)) {
               //printf("Is Positive:%s\n", itrOfDBNames->c_str());
@@ -233,15 +234,22 @@ void getBankerInChargingDB() {
           }
           countOfBanker += 1;
       }
+*/
+      pTurnOverDiscover->updateBankerResultTable();
+      //if (pTurnOverDiscover->isPreviousDaysSuckIn(20)) {
+      //    printf("isDBBankedInDays for DB:%s\n", itrOfDBNames->c_str());
+      //}
+
+      //printf("updateBankerResultTable for DB:%s\n", itrOfDBNames->c_str());
       itrOfDBNames++;
       delete pTurnOverDiscover;
       pTurnOverDiscover = NULL;
     }
 
-    printf("BankerInCharge size:%lf ratio:%lf\n", countOfBanker, countOfBanker / fileNames.size());
-    printf("NeutralBanker  size:%lf ratio:%lf\n", countOfNeutralBanker ,countOfNeutralBanker / countOfBanker);
-    printf("NagtiveBanker  size:%lf ratio:%lf\n", countOfNagtiveBanker, countOfNagtiveBanker / countOfBanker);
-    printf("PositiveBanker size:%lf ratio:%lf\n", countOfPositiveBanker, countOfPositiveBanker / countOfBanker);
+    //printf("BankerInCharge size:%lf ratio:%lf\n", countOfBanker, countOfBanker / fileNames.size());
+    //printf("NeutralBanker  size:%lf ratio:%lf\n", countOfNeutralBanker ,countOfNeutralBanker / countOfBanker);
+    //printf("NagtiveBanker  size:%lf ratio:%lf\n", countOfNagtiveBanker, countOfNagtiveBanker / countOfBanker);
+    //printf("PositiveBanker size:%lf ratio:%lf\n", countOfPositiveBanker, countOfPositiveBanker / countOfBanker);
 
     sPositiveDBs.sort(LargeToSmall);
     std::list<PositiveDB>::iterator iterPositionDB = sPositiveDBs.begin();
@@ -311,7 +319,8 @@ bool updateFilterResults(const std::string& dirName, int threads) {
     DBFilter* dbFilter = NULL;
     while (itrDB != originDBNames.end()) {
         dbFilter = new DBFilter(*itrDB);
-        dbFilter->clearTableFromOriginDB(DBFilter::mResultTableName);
+        dbFilter->clearTableFromOriginDB(DBFilter::mTmpResultTableName);
+        //dbFilter->clearTable("BankerResultTable");
         dbFilter->updateFilterResultByTurnOver("FilterResult20W", 200000, 1000000);
         //dbFilter->updateFilterResultByTurnOver("FilterResult10W", 100000, 1000000);
         //dbFilter->updateFilterResultByTurnOver("FilterResult20W", 200000, 1000000);
@@ -501,11 +510,13 @@ int deleteRows(std::list<std::string>& targetRows) {
     }
 }
 
+
+
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   getBankerInChargingDB();
-   //updateOriginDBs("details", NUM_THREAD);
+   updateOriginDBs("details", NUM_THREAD);
    //updateFilterResults("dbs", NUM_THREAD);
+   //getBankerInChargingDB();
    //getSideWaysStock();
    //filterOriginDB();
    //getTP();

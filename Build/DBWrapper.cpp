@@ -67,9 +67,6 @@ static std::string SELECT_COLUMNS_IN_GROUP_BUY_TURNOVER(const std::string& srcTa
     return command;
 }
 
-
-
-
 static bool bindCommand(XLSReader::XLSElement* xlsElement, sqlite3_stmt* stmt) {
     int ret = -1;
     //FIXME: For now, time is not used.
@@ -213,6 +210,36 @@ static bool bindCommand(const DBFilter::BaseResultData& filterResultElement, sql
     return true;
 }
 
+static bool bindCommand(const TurnOverDiscover::BankerResultInfo& bankerResultInfo, sqlite3_stmt* stmt) {
+    int ret = -1;
+
+    ret = sqlite3_bind_text(stmt, 1, bankerResultInfo.mDate.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mDate Fail: %s", bankerResultInfo.mDate.c_str());
+        return false;
+    }
+
+    ret = sqlite3_bind_text(stmt, 2, bankerResultInfo.mIsBankerIncharge.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mIsBankerIncharge Fail: %s", bankerResultInfo.mIsBankerIncharge.c_str());
+        return false;
+    }
+
+    ret = sqlite3_bind_text(stmt, 3, bankerResultInfo.mIsPositive.c_str(), -1, NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mIsPositive Fail: %s", bankerResultInfo.mIsPositive.c_str());
+        return false;
+    }
+
+    ret = sqlite3_bind_double(stmt, 4, bankerResultInfo.mBuyToSale);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "bind mBuyToSale Fail: %f", bankerResultInfo.mBuyToSale);
+        return false;
+    }
+
+    return true;
+}
+
 //static
 std::map<std::string, sqlite3*> DBWrapper::mDatabaseMap;
 
@@ -253,12 +280,12 @@ bool DBWrapper::closeDB(const std::string& DBName) {
     errno = 0;
     sqlite3* targetDB = getDBByName(DBName);
     if (targetDB == NULL) {
-        LOGI(LOGTAG, "The Database with the name of %s, has been closed, errno:%d", DBName.c_str(), errno);
+        LOGD(LOGTAG, "The Database with the name of %s, has been closed, errno:%d", DBName.c_str(), errno);
         return true;
     }
     int ret = sqlite3_close(targetDB);
     if (ret != SQLITE_OK) {
-        LOGI(LOGTAG, "Fail to close Database with the name of %s, ret:%d, errmessage:%s", DBName.c_str(), ret, sqlite3_errmsg(targetDB));
+        LOGE(LOGTAG, "Fail to close Database with the name of %s, ret:%d, errmessage:%s", DBName.c_str(), ret, sqlite3_errmsg(targetDB));
         return false;
     }
     mDatabaseMap.erase(DBName);
@@ -295,6 +322,10 @@ int DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const s
       case FILTER_TABLE: {
         break;
       }
+      case FILTER_BANDKE_TABLE: {
+        tableFormat = TABLE_FORMAT_BANKER_DEF;
+        break;
+      }
       case FINAL_TABLE: {
         break;
       }
@@ -307,7 +338,6 @@ int DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const s
     sqlite3* targetDB = getDBByName(DBName);
     std::string sql(CREATE_TABLE + tableName + tableFormat);
 
-    LOGI(LOGTAG, "targetDB:%p", targetDB);
     if (!targetDB && !openDB(DBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to get Database with name %s\n", DBName.c_str());
         LOGI(LOGTAG, "And fail to open a new Database with name %s either\n", DBName.c_str());
@@ -319,7 +349,7 @@ int DBWrapper::openTable(int32_t typeOfTable, const std::string& DBName, const s
         std::string error(sqlERR);
         if (error.find("already exists")) {
             LOGD(LOGTAG, "%s\n", sqlERR);
-            LOGI(LOGTAG, "There is already a Table with name %s\n", tableName.c_str());
+            LOGD(LOGTAG, "There is already a Table with name %s\n", tableName.c_str());
             return ALRD_OPEN_TABLE;
         }
 
@@ -336,8 +366,8 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
     //LOG sql
     sqlite3_stmt* stmt = NULL;
     int ret = -1;
-    sqlite3* targetDB = NULL;
-    if (!openDB(aDBName, &targetDB)) {
+    sqlite3* targetDB = getDBByName(aDBName);
+    if (targetDB == NULL && !openDB(aDBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
         return false;
     }
@@ -357,7 +387,7 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
             std::string tableName = (char*)sqlite3_column_text(stmt, 0);
             tableNames.push_back(tableName);
         } else if (ret == SQLITE_DONE) {
-            LOGI(LOGTAG, "DONE, value:%d", ret);
+            LOGD(LOGTAG, "DONE, value:%d", ret);
             break;
         } else {
             LOGI(LOGTAG, "OTHER, value:%d", ret);
@@ -386,10 +416,10 @@ bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::str
 
     sqlite3_stmt* stmt = NULL;
     int ret = -1;
-    sqlite3* targetDB = NULL;
-    if (!openDB(aDBName, &targetDB)) {
+    sqlite3* targetDB = getDBByName(aDBName);
+    if (targetDB == NULL && !openDB(aDBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
-        closeDB(aDBName);
+        //closeDB(aDBName);
         return false;
     }
     ret = sqlite3_prepare(targetDB,
@@ -424,7 +454,7 @@ bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::str
                 continue;
             }
             LOGD(LOGTAG, "isBuy:%s", isBuy.c_str());
-            closeDB(aDBName);
+            //closeDB(aDBName);
             return false;
         }
     }
@@ -432,11 +462,10 @@ bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::str
 
     if (SQLITE_OK != sqlite3_finalize(stmt)) {
         LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
-        closeDB(aDBName);
+        //closeDB(aDBName);
         return false;
     }
 
-    closeDB(aDBName);
     return true;
 }
 
@@ -453,8 +482,8 @@ bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::
 
     sqlite3_stmt* stmt = NULL;
     int ret = -1;
-    sqlite3* targetDB = NULL;
-    if (!openDB(aDBName, &targetDB)) {
+    sqlite3* targetDB = getDBByName(aDBName);
+    if (targetDB == NULL && !openDB(aDBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
         return false;
     }
@@ -489,7 +518,7 @@ bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::
                 continue;
             }
             LOGD(LOGTAG, "isBuy:%s", isBuy.c_str());
-            closeDB(aDBName);
+            //closeDB(aDBName);
             return false;
         }
     }
@@ -497,11 +526,10 @@ bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::
 
     if (SQLITE_OK != sqlite3_finalize(stmt)) {
         LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
-        closeDB(aDBName);
+        //closeDB(aDBName);
         return false;
     }
 
-    closeDB(aDBName);
     return true;
 }
 
@@ -597,6 +625,51 @@ bool DBWrapper::insertFilterResultsInBatch(const std::string& DBName,
     size_t listLen = filterResultValues.size();
     size_t i = 0;
     for (itrOfValues = filterResultValues.begin(); itrOfValues != filterResultValues.end(); itrOfValues++) {
+         sqlite3_reset(stmt);
+         if (bindCommand(*itrOfValues, stmt) &&
+             sqlite3_step(stmt) != SQLITE_DONE){
+             //FIXME: Maybe we should end the process now
+             sqlite3_finalize(stmt);
+             endBatch(targetDB);
+             LOGI(LOGTAG, "Fail to insert filter results into table: %s in DB: %s", tableName.c_str(), DBName.c_str());
+             return false;
+         }
+    }
+    sqlite3_finalize(stmt);
+    endBatch(targetDB);
+
+    return true;
+}
+
+bool DBWrapper::insertBankerResultsInBatch(const std::string& DBName,
+                                           const std::string& tableName,
+                                           std::list<std::string>& strValues,
+                                           std::list<TurnOverDiscover::BankerResultInfo>& bankerResultValues,
+                                           sqlite3_callback fCallback) {
+    sqlite3_stmt* stmt = NULL;
+    sqlite3* targetDB = getDBByName(DBName);
+
+    // The first description is the format of values to insert
+    std::string format = *(strValues.begin());
+    std::string sql = INSERT_OP + tableName + format;
+    LOGD(LOGTAG, "DBWrapper: sql:%s, targetDB:%p\n", sql.c_str(), targetDB);
+    int ret = sqlite3_prepare(targetDB,
+                              sql.c_str(),
+                              -1,
+                              &stmt,
+                              NULL);
+
+    LOGD(LOGTAG, "DBWrapper:ret:%d\n", ret);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt for sql:%s, message:%s", sql.c_str(), sqlite3_errmsg(targetDB));
+        return false;
+    }
+
+    beginBatch(targetDB);
+    std::list<TurnOverDiscover::BankerResultInfo>::iterator itrOfValues;
+    size_t listLen = bankerResultValues.size();
+    size_t i = 0;
+    for (itrOfValues = bankerResultValues.begin(); itrOfValues != bankerResultValues.end(); itrOfValues++) {
          sqlite3_reset(stmt);
          if (bindCommand(*itrOfValues, stmt) &&
              sqlite3_step(stmt) != SQLITE_DONE){

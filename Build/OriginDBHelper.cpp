@@ -35,10 +35,10 @@ bool OriginDBHelper::travelDir(const std::string& dirName, const std::string& fi
     DIR* pDir = NULL;
     std::string childName;
 
-    LOGI(LOGTAG, "opendir for:%s", fullName.c_str());
+    LOGD(LOGTAG, "opendir for:%s", fullName.c_str());
     pDir = opendir(fullName.c_str());
     if (pDir == NULL) {
-        LOGI(LOGTAG, "Fail to opendir:%s %s", dirName.c_str(), fileName.c_str());
+        LOGD(LOGTAG, "Fail to opendir:%s %s", dirName.c_str(), fileName.c_str());
         return false;
     }
 
@@ -55,7 +55,7 @@ bool OriginDBHelper::travelDir(const std::string& dirName, const std::string& fi
 
             childName = fullName + "/" + pDirent->d_name;
             if (lstat(childName.c_str(), &s) == -1) {
-                LOGI(LOGTAG, "lstat errno:%d", errno);
+                LOGD(LOGTAG, "lstat errno:%d", errno);
                 errno = 0;
                 continue;
             }
@@ -65,11 +65,11 @@ bool OriginDBHelper::travelDir(const std::string& dirName, const std::string& fi
             } else if (S_ISREG(s.st_mode)) {
                 mOriginFiles.push_back(childName);
             } else {
-                LOGI(LOGTAG, "Error OTHER");
+                LOGD(LOGTAG, "Error OTHER");
                 break;
             }
         } else {
-            LOGI(LOGTAG, "Error Fail to readdir from:%s, errno:%d", fullName.c_str(), errno);
+            LOGD(LOGTAG, "Error Fail to readdir from:%s, errno:%d", fullName.c_str(), errno);
             break;
         }
     }
@@ -84,12 +84,12 @@ bool OriginDBHelper::createOriginDBForDir(const std::string& dirName) {
     travelDir(dirName);
     mOriginFiles.sort();
 
-    LOGI(LOGTAG, "Size of files to open:%d", mOriginFiles.size());
+    LOGD(LOGTAG, "Size of files to open:%d", mOriginFiles.size());
     for (singleOriginFileName = mOriginFiles.begin(), i = 0; i < mOriginFiles.size(); singleOriginFileName++, i++) {
-         LOGI(LOGTAG, "create OriginDB from file:%s\n", (*singleOriginFileName).c_str());
+         LOGD(LOGTAG, "create OriginDB from file:%s\n", (*singleOriginFileName).c_str());
          if (!createOriginTableFromFile(*singleOriginFileName)) {
              perror("Reason:");
-             LOGI(LOGTAG, "Fail to open %dth file", i);
+             LOGD(LOGTAG, "Fail to open %dth file", i);
              return false;
          }
     }
@@ -121,6 +121,7 @@ static bool getFilesNeedToUpdate(std::list<std::string>& existingTables,
         && itrDetail != originFiles.end()) {
         if ((*itrTable) == "FilterResult"
             || (*itrTable) == "FilterResult20W"
+            || (*itrTable) == "BankerResultTable"
             || ((*itrTable) == "MiddleWareTable")) {
             itrTable++;
             continue;
@@ -152,7 +153,7 @@ static bool getFilesNeedToUpdate(std::list<std::string>& existingTables,
     while (itrDetail != originFiles.end()) {
         fileNO = getFileNO(*itrDetail);
         if (tableNO < fileNO) {
-            LOGI(LOGTAG, "tableNO: %s, fileNO:%s, originFile:%s", tableNO.c_str(), fileNO.c_str(), (*itrDetail).c_str());
+            LOGI(LOGTAG, "File need to update: tableNO: %s, fileNO:%s, originFile:%s", tableNO.c_str(), fileNO.c_str(), (*itrDetail).c_str());
             outFilesNeedToUpdate.push_back(*itrDetail);
         }
         itrDetail++;
@@ -223,16 +224,16 @@ bool OriginDBHelper::createOriginTableFromFile(const std::string& fileName, cons
     if (dbName != mCurDBName) {
         if (mCurDBName.length() > 0) {
             //FIXME: the init value of mCurDBName is ""
-            LOGI(LOGTAG, "close DB:%s", mCurDBName.c_str());
+            LOGD(LOGTAG, "close DB:%s", mCurDBName.c_str());
             DBWrapper::closeDB(mCurDBName);
         }
         mCurDBName = dbName;
     }
     mTableName = tableName;
 
-    LOGI(LOGTAG, "fileName:%s", fileName.c_str());
-    LOGI(LOGTAG, "mCurDBName:%s", mCurDBName.c_str());
-    LOGI(LOGTAG, "mTableName:%s", mTableName.c_str());
+    LOGD(LOGTAG, "fileName:%s", fileName.c_str());
+    LOGD(LOGTAG, "mCurDBName:%s", mCurDBName.c_str());
+    LOGD(LOGTAG, "mTableName:%s", mTableName.c_str());
     std::list<XLSReader::XLSElement*> detailInfoList;
     std::list<XLSReader::XLSElement*>::iterator itr;
     if (!TextXLSReader::getElementsFrom(fileName, detailInfoList)) {
@@ -299,14 +300,14 @@ bool OriginDBHelper::getSpecsFromFileName(const std::string& fileName,
     }
 
     tableName = PREFIX_OF_TABLE + year + month + day;
-    LOGI(LOGTAG, "tableName:%s", tableName.c_str());
+    LOGD(LOGTAG, "tableName:%s", tableName.c_str());
 
     // XXX: database name
     if (dbName.size() == 0) {
         dbName    = fileNoPrefix.substr(0, fileNoPrefix.find_first_of('/'));
         dbName = dbName + SUFFIX_OF_DB_TYPE;
     }
-    LOGI(LOGTAG, "dbName:%s", dbName.c_str());
+    LOGD(LOGTAG, "dbName:%s", dbName.c_str());
     return true;
 }
 
@@ -342,12 +343,12 @@ bool OriginDBHelper::insertElement(const XLSReader::XLSElement* detailInfo) {
 bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*>& detailInfoList) {
     // FIXME:Take care of the instance being released by other
     // thread. We may add a lock in the DBWrapper to handle the
-    LOGI(LOGTAG, "openTable, mCurDBName:%s, mTableName:%s", mCurDBName.c_str(), mTableName.c_str());
+    LOGD(LOGTAG, "openTable, mCurDBName:%s, mTableName:%s", mCurDBName.c_str(), mTableName.c_str());
     const std::string curDBName(mCurDBName);
     const std::string curTableName(mTableName);
     // If there is already an OrginTable with the same to currTableName, Abort!
     if (DBWrapper::SUCC_OPEN_TABLE != DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, curDBName, curTableName)) {
-        LOGE(LOGTAG, "Fail to open table:%s or it has been there already", curTableName.c_str());
+        LOGD(LOGTAG, "Fail to open table:%s or it has been there already", curTableName.c_str());
         return true;
     }
 
