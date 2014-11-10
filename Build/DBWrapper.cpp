@@ -12,6 +12,16 @@
 #define DEFAULT_VALUE_FOR_INT -1
 #define ORIGIN_SQLITE_NAME "test.db"
 
+#define DATE                " Date "
+#define VOLUME              " Volume "
+#define TURNOVER            " TurnOver "
+#define TURNOVER_SALE       " TurnOverSale "
+#define TURNOVER_BUY        " TurnOverBuy "
+#define SALE_BUY            " SaleBuy "
+#define BEGIN_PRICE         " BeginPrice "
+#define END_PRICE           " EndPrice "
+
+
 static char* sqlERR = NULL;
 
 static std::string GET_TABLES() {
@@ -37,6 +47,26 @@ static std::string DELETE_ROWS_FROM_TABLE(const std::string& srcTable,
 
     return command;
 }
+
+static std::string SELECT_COLUMNS_IN_GROUP_BUY_TURNOVER(const std::string& srcTable,
+                                                        const std::string& columnNames,
+                                                        const std::string& arg,
+                                                        const std::string& key) {
+    std::string command("");
+    command += " SELECT ";
+    command += columnNames;
+    command += " FROM ";
+    command += srcTable;
+    command += " WHERE ";
+    command += TURNOVER;
+    command += " >= ";
+    command += arg;
+    command += " GROUP BY ";
+    command += key;
+
+    return command;
+}
+
 
 
 
@@ -343,6 +373,137 @@ bool DBWrapper::getAllTablesOfDB(const std::string& aDBName, std::list<std::stri
     return true;
 }
 
+bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::string& tableName, std::vector<double>& outTurnOvers) {
+    std::string sql("");
+    std::string columnNames("");
+    columnNames += SALE_BUY;
+    columnNames += ",";
+    columnNames += " sum(Volume) ";
+    columnNames += ",";
+    columnNames += " sum(TurnOver) ";
+
+    sql = SELECT_COLUMNS_IN_GROUP_BUY_TURNOVER(tableName, columnNames, "0", SALE_BUY);
+
+    sqlite3_stmt* stmt = NULL;
+    int ret = -1;
+    sqlite3* targetDB = NULL;
+    if (!openDB(aDBName, &targetDB)) {
+        LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
+        closeDB(aDBName);
+        return false;
+    }
+    ret = sqlite3_prepare(targetDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+    if (ret != SQLITE_OK) {
+        LOGD(LOGTAG, "Fail to prepare stmt to getSumTurnOver of table: %s in:%s, errno:%d, ret:%d", tableName.c_str(), aDBName.c_str(), errno, ret);
+        closeDB(aDBName);
+        return false;
+    }
+
+    while(sqlite3_step(stmt) == SQLITE_ROW) {
+        std::string isBuy("");
+        isBuy= (char*)sqlite3_column_text(stmt, 0);
+        LOGD(LOGTAG, "isBuy:%s, table:%s", isBuy.c_str(), tableName.c_str());
+
+        if (isBuy == std::string("true")) {
+            double sumBuy = sqlite3_column_double(stmt, 2);
+            outTurnOvers[0] = sumBuy;
+            LOGD(LOGTAG, "isBuy:%s, table:%s, sumBuy:%lf", isBuy.c_str(), tableName.c_str(), sumBuy);
+        } else if (isBuy == std::string("false")) {
+            double sumSale = sqlite3_column_double(stmt, 2);
+            outTurnOvers[1] = sumSale;
+            LOGD(LOGTAG, "isBuy:%s, table:%s, sumSale:%lf", isBuy.c_str(), tableName.c_str(), sumSale);
+        } else {
+            // Not buy, not sale, just a normal.
+            // The sale_buy should be empty
+            if (isBuy.empty()) {
+                LOGD(LOGTAG, "NON-BUY-SALE");
+                continue;
+            }
+            LOGD(LOGTAG, "isBuy:%s", isBuy.c_str());
+            closeDB(aDBName);
+            return false;
+        }
+    }
+
+
+    if (SQLITE_OK != sqlite3_finalize(stmt)) {
+        LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
+        closeDB(aDBName);
+        return false;
+    }
+
+    closeDB(aDBName);
+    return true;
+}
+
+bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::string& tableName, std::vector<double>& outTurnOvers) {
+    std::string sql("");
+    std::string columnNames("");
+    columnNames += SALE_BUY;
+    columnNames += ",";
+    columnNames += " sum(Volume) ";
+    columnNames += ",";
+    columnNames += " sum(TurnOver) ";
+
+    sql = SELECT_COLUMNS_IN_GROUP_BUY_TURNOVER(tableName, columnNames, "300000", SALE_BUY);
+
+    sqlite3_stmt* stmt = NULL;
+    int ret = -1;
+    sqlite3* targetDB = NULL;
+    if (!openDB(aDBName, &targetDB)) {
+        LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
+        return false;
+    }
+    ret = sqlite3_prepare(targetDB,
+                          sql.c_str(),
+                          -1,
+                          &stmt,
+                          NULL);
+    if (ret != SQLITE_OK) {
+        LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d, ret:%d", aDBName.c_str(), errno, ret);
+        return false;
+    }
+
+    while(sqlite3_step(stmt) == SQLITE_ROW) {
+        std::string isBuy("");
+        isBuy= (char*)sqlite3_column_text(stmt, 0);
+        LOGD(LOGTAG, "isBuy:%s, table:%s", isBuy.c_str(), tableName.c_str());
+
+        if (isBuy == std::string("true")) {
+            double bankerBuy = sqlite3_column_double(stmt, 2);
+            outTurnOvers[0] = bankerBuy;
+            LOGD(LOGTAG, "isBuy:%s, table:%s, bankerBuy:%lf", isBuy.c_str(), tableName.c_str(), bankerBuy);
+        } else if (isBuy == std::string("false")) {
+            double bankerSale = sqlite3_column_double(stmt, 2);
+            outTurnOvers[1] = bankerSale;
+            LOGD(LOGTAG, "isBuy:%s, table:%s, bankerSale:%lf", isBuy.c_str(), tableName.c_str(), bankerSale);
+        } else {
+            // Not buy, not sale, just a normal.
+            // The sale_buy should be empty
+            if (isBuy.empty()) {
+                LOGD(LOGTAG, "NON-BUY-SALE");
+                continue;
+            }
+            LOGD(LOGTAG, "isBuy:%s", isBuy.c_str());
+            closeDB(aDBName);
+            return false;
+        }
+    }
+
+
+    if (SQLITE_OK != sqlite3_finalize(stmt)) {
+        LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
+        closeDB(aDBName);
+        return false;
+    }
+
+    closeDB(aDBName);
+    return true;
+}
 
 bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback) {
     int ret = DEFAULT_VALUE_FOR_INT;

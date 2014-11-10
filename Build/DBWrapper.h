@@ -5,6 +5,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <vector>
 #include "sqlite3.h"
 
 #include "XLSReader.h"
@@ -45,6 +46,9 @@ class DBWrapper {
     static bool beginBatch(sqlite3* db);
     static bool endBatch(sqlite3* db);
     static bool getAllTablesOfDB(const std::string& aDBName, std::list<std::string>& tableNames);
+
+    static bool getSumTurnOverOfTable(const std::string& aDBName, const std::string& tableName, std::vector<double>& outTurnOvers);
+    static bool getBankerTurnOverOfTable(const std::string& aDBName, const std::string& tableName, std::vector<double>& outTurnOvers);
 
     static bool insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback);
     static bool insertElementsInBatch(std::string& DBName, std::string& tableName, std::list<std::string>& values, std::list<XLSReader::XLSElement*>& xlsValues, sqlite3_callback fCallback);

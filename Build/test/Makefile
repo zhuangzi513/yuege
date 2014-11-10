@@ -10,6 +10,7 @@ FILEWRAPPER_SRC:=\
 SEARCH_SRC:=\
     ../../Search/Forecaster.cpp \
     ../../Search/PriceDiscover.cpp \
+    ../../Search/TurnOverDiscover.cpp \
     $(NULL)
 
 FILEWRAPPER_INCLUDE:=\

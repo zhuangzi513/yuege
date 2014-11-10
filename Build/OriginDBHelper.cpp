@@ -348,7 +348,7 @@ bool OriginDBHelper::initOriginDBWithDetailInfo(std::list<XLSReader::XLSElement*
     // If there is already an OrginTable with the same to currTableName, Abort!
     if (DBWrapper::SUCC_OPEN_TABLE != DBWrapper::openTable(DBWrapper::ORIGIN_TABLE, curDBName, curTableName)) {
         LOGE(LOGTAG, "Fail to open table:%s or it has been there already", curTableName.c_str());
-        return false;
+        return true;
     }
 
     std::string singleDes;
