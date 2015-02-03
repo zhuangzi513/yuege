@@ -15,7 +15,7 @@
 
 #define LOGTAG "TurnOverDiscover"
 
-const float LIMIT_RATIO = 1.1;
+const float LIMIT_RATIO = 2.5;
 const std::string TurnOverDiscover::mBankerResultTable = "BankerResultTable";
 
 static std::string SELECT_COLUMNS(const std::string& tableName, const std::string& targetColumns) {
@@ -402,6 +402,7 @@ bool TurnOverDiscover::getBankerInChargeInfoFromBankerResultTable(const std::str
 
 bool TurnOverDiscover::isTodayBankerInCharge(const std::string& aOriginTableName) {
     //BankerTurnover > 50% of SumTurnOver
+    getBankerInChargeInfoFromOriginTable(aOriginTableName);
     double sumBankerTurnOver = mBankerTurnOvers[0] + mBankerTurnOvers[1];
     double sumTurnOver = mSumTurnOvers[0] + mSumTurnOvers[1];
     if ((sumBankerTurnOver * 2) < sumTurnOver) {
@@ -412,8 +413,10 @@ bool TurnOverDiscover::isTodayBankerInCharge(const std::string& aOriginTableName
 }
 
 bool TurnOverDiscover::isTodayPositiveBankerInCharge(const std::string& aOriginTableName) {
+    getBankerInChargeInfoFromOriginTable(aOriginTableName);
     if (mBankerTurnOvers.size() < 2
         || mSumTurnOvers.size() < 2) {
+        getBankerInChargeInfoFromOriginTable(aOriginTableName);
         return false;
     }
 

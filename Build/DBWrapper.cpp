@@ -419,8 +419,7 @@ bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::str
     sqlite3* targetDB = getDBByName(aDBName);
     if (targetDB == NULL && !openDB(aDBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
-        //closeDB(aDBName);
-        return false;
+        goto Fail;
     }
     ret = sqlite3_prepare(targetDB,
                           sql.c_str(),
@@ -429,8 +428,7 @@ bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::str
                           NULL);
     if (ret != SQLITE_OK) {
         LOGD(LOGTAG, "Fail to prepare stmt to getSumTurnOver of table: %s in:%s, errno:%d, ret:%d", tableName.c_str(), aDBName.c_str(), errno, ret);
-        closeDB(aDBName);
-        return false;
+        goto Fail;
     }
 
     while(sqlite3_step(stmt) == SQLITE_ROW) {
@@ -454,19 +452,21 @@ bool DBWrapper::getSumTurnOverOfTable(const std::string& aDBName, const std::str
                 continue;
             }
             LOGD(LOGTAG, "isBuy:%s", isBuy.c_str());
-            //closeDB(aDBName);
-            return false;
+            goto Fail;
         }
     }
 
 
     if (SQLITE_OK != sqlite3_finalize(stmt)) {
         LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
-        //closeDB(aDBName);
-        return false;
+        goto Fail;
     }
 
     return true;
+
+Fail:
+    closeDB(aDBName);
+    return false;
 }
 
 bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::string& tableName, std::vector<double>& outTurnOvers) {
@@ -485,7 +485,7 @@ bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::
     sqlite3* targetDB = getDBByName(aDBName);
     if (targetDB == NULL && !openDB(aDBName, &targetDB)) {
         LOGI(LOGTAG, "Fail to open DB with name:%s", aDBName.c_str());
-        return false;
+        goto Fail;
     }
     ret = sqlite3_prepare(targetDB,
                           sql.c_str(),
@@ -494,7 +494,7 @@ bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::
                           NULL);
     if (ret != SQLITE_OK) {
         LOGI(LOGTAG, "Fail to prepare stmt to retrieve all the tables in:%s, errno:%d, ret:%d", aDBName.c_str(), errno, ret);
-        return false;
+        goto Fail;
     }
 
     while(sqlite3_step(stmt) == SQLITE_ROW) {
@@ -518,19 +518,22 @@ bool DBWrapper::getBankerTurnOverOfTable(const std::string& aDBName, const std::
                 continue;
             }
             LOGD(LOGTAG, "isBuy:%s", isBuy.c_str());
-            //closeDB(aDBName);
-            return false;
+            goto Fail;
         }
     }
 
 
     if (SQLITE_OK != sqlite3_finalize(stmt)) {
         LOGI(LOGTAG, "Fail to finalize the stmt to retrieve tables in DB:%s", aDBName.c_str());
-        //closeDB(aDBName);
-        return false;
+        goto Fail;
     }
 
     return true;
+
+Fail:
+    closeDB(aDBName);
+    return false;
+    
 }
 
 bool DBWrapper::insertElement(std::string& DBName, std::string& tableName, std::string& KeyAndValues, sqlite3_callback fCallback) {
