@@ -29,15 +29,17 @@
 class DBFilter {
   public:
     class BaseResultData;
-    class DateRegion;
-    class PriceRegion;
+    //class DateRegion;
+    //class PriceRegion;
     friend class DBSearcher;
 
+/*
     enum {
       CONTINUE_FLOWIN,
       CONTINUE_FLOWIN_PRI,
       CONTINUE_FLOWIN_FROM_FIRST_POSITIVE
     };
+*/
 
     DBFilter(const std::string& aDBName);
     ~DBFilter();
@@ -80,10 +82,10 @@ class DBFilter {
     */
     bool updateFilterResultByTurnOver(const std::string& aResultTableName, const int aMinTurnover, const int aMaxTurnOver);
 
-    bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
+    //bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
 
-    static bool getGlobalHitRate(double& hitRate);
-    bool getRecommandBuyDateRegions(const int throughWhat, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    //static bool getGlobalHitRate(double& hitRate);
+    //bool getRecommandBuyDateRegions(const int throughWhat, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
 
   private:
     /*
@@ -136,9 +138,9 @@ class DBFilter {
     */
     bool isTableExist(const std::string& aDBName, const std::string& aTableName);
 
-    bool getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
-    bool getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
-    bool getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    //bool getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    //bool getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
+    //bool getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
 
     /*
      * Get all the previous filter results in the specific result-table named "aResultTableName", and save them
@@ -310,6 +312,7 @@ class DBFilter {
         std::string mDate;
     };
 
+/*
     class DateRegion {
       public:
         DateRegion()
@@ -343,6 +346,7 @@ class DBFilter {
         double mBeginPrice;
         double mEndPrice;
     };
+*/
 
 
     /*
@@ -375,10 +379,10 @@ class DBFilter {
     */
     std::list<std::string> mNewAddedTables;
 
-    /*
-     * XXX:Remove it later
-    */
-    static std::string mResultTableName;
+    ///*
+    // * XXX:Remove it later
+    //*/
+    //static std::string mResultTableName;
 
     /*
      * The names of result-tables, for now only 5 result tables for one origin-databse:

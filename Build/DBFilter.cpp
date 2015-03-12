@@ -9,11 +9,11 @@
 #include <stdio.h>
 #include <errno.h>
 
-#define DEFAULT_LASTING_LEN 3
+//#define DEFAULT_LASTING_LEN 3
 
 #define LOGTAG   "DBFilter"
 #define DEFAULT_VALUE_FOR_INT -1
-#define MIN_TURNOVER 100
+//#define MIN_TURNOVER 100
 #define DAYS_BEFORE_LEV1 5
 #define DAYS_BEFORE_LEV2 10
 #define DAYS_BEFORE_LEV3 20
@@ -24,12 +24,12 @@ static double sumForcasters = 0.0;
 static double sumIncome = 0.0;
 static bool sResultTableNamesInited = false;
 
-static std::list<double> sPre15Flowins;
+//static std::list<double> sPre15Flowins;
 
 std::list<std::string> DBFilter::mResultTableNames;
 std::list<double> DBFilter::mFilterTurnOvers;
 
-std::string DBFilter::mResultTableName         = "FilterResult";
+//std::string DBFilter::mResultTableName         = "FilterResult";
 std::string DBFilter::mTmpResultTableName      = "MiddleWareTable";
 std::string DBFilter::mDiffBigBuySaleTableName = "";
 
@@ -244,6 +244,7 @@ bool DBFilter::updateFilterResultByTurnOver(const std::string& aResultTableName,
     return true;
 }
 
+/*
 bool DBFilter::getBuyDateRegionsContinueFlowin(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions) {
     std::string sql, targetColumns;
     sqlite3_stmt* stmt = NULL;
@@ -481,7 +482,7 @@ bool DBFilter::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, st
         double beginPrice   = sqlite3_column_double(stmt, 5);
         double endPrice     = sqlite3_column_double(stmt, 6);
 
-        LOGD(LOGTAG, "aDBName:%s, Date:%s, TurnoverSale:%f, TurnoverBuy:%f, flowinOneDay:%f, beginPrice:%f, endPrice:%f",
+	LOGD(LOGTAG, "aDBName:%s, Date:%s, TurnoverSale:%f, TurnoverBuy:%f, flowinOneDay:%f, beginPrice:%f, endPrice:%f",
                       aDBName.c_str(), date.c_str(), turnoverSale, turnoverBuy, flowinOneDay, beginPrice, endPrice);
         //Step 1: find the starting day: there has been DEFAULT_LASTING_LEN days whose flowinOneDay is positive
         if (flowinOneDay > MIN_TURNOVER && !newBuySaleBlockStarted) {
@@ -575,6 +576,7 @@ bool DBFilter::getRecommandBuyDateRegions(const int throughWhat, const std::stri
     
     return true;
 }
+*/
 
 //=======private
 bool DBFilter::openOriginDB() {
@@ -1100,6 +1102,7 @@ bool DBFilter::filterTablesByTurnOver(const std::string& aResultTableName, const
     return true;
 }
 
+/*
 //FIXME: the recommandBuyRegions should be of const
 bool DBFilter::getHitRateOfBuying(const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyRegions) {
     LOGD(LOGTAG, "Enter getHitRateOfBuying, aDBName:%s", aDBName.c_str());
@@ -1217,4 +1220,5 @@ bool DBFilter::getGlobalHitRate(double& hitRate) {
     LOGI(LOGTAG, "\n\n======sum of reallly HitShots:%f, sum of Forcasters:%f, hitRate:%f, globaleIncome:%f\n\n", sumShots, sumForcasters, hitRate, globaleIncome);
     return true;
 }
+*/
 

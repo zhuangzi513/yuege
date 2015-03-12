@@ -18,7 +18,7 @@
 #include <errno.h>
 
 #define EXAMPLE_XLS_NAME "600001/2013/0101.xls"
-#define DAY_OF_TARGET    "O20141111"
+#define DAY_OF_TARGET    "O20150305"
 #define NUM_THREAD 20
 
 int searchCallback(void *arg1, int arg2, char **arg3, char **arg4) {
@@ -209,7 +209,6 @@ void getBankerInChargingDB() {
     TurnOverDiscover* pTurnOverDiscover = NULL;
     for (int i = 0; i < fileNames.size(); i++) {
       pTurnOverDiscover = new TurnOverDiscover(*itrOfDBNames, "FilterResult20W");
-/*
       if (pTurnOverDiscover->isTodayBankerInCharge(DAY_OF_TARGET)) {
           if (pTurnOverDiscover->isTodayNeutralBankerInCharge(DAY_OF_TARGET)) {
               //printf("Is Positive:%s\n", itrOfDBNames->c_str());
@@ -220,7 +219,7 @@ void getBankerInChargingDB() {
               countOfNagtiveBanker += 1;
           }
           if (pTurnOverDiscover->isTodayPositiveBankerInCharge(DAY_OF_TARGET)) {
-              //printf("Is Positive:%s\n", itrOfDBNames->c_str());
+              printf("Is Positive:%s\n", itrOfDBNames->c_str());
               std::vector<double> bankerTurnOvers;
               pTurnOverDiscover->getBankerTurnOvers(bankerTurnOvers);
               //printf("BankerTurnOvers, Buy:%lf, Sale:%lf\n", bankerTurnOvers[0], bankerTurnOvers[1]);
@@ -234,8 +233,7 @@ void getBankerInChargingDB() {
           }
           countOfBanker += 1;
       }
-*/
-      pTurnOverDiscover->updateBankerResultTable();
+      //pTurnOverDiscover->updateBankerResultTable();
       //if (pTurnOverDiscover->isPreviousDaysSuckIn(20)) {
       //    printf("isDBBankedInDays for DB:%s\n", itrOfDBNames->c_str());
       //}
@@ -276,7 +274,7 @@ void* doUpdateFilterResults(void *args) {
 
     for (int i = 0; i < itrLength; i++) {
         dbFilter = new DBFilter(*beginItr);
-        dbFilter->clearTableFromOriginDB(DBFilter::mResultTableName);
+        dbFilter->clearTableFromOriginDB(Forecaster::mResultTableName);
         printf("doUpdateFilterResults self beginItr:%s\n", beginItr->c_str());
         bool result = dbFilter->updateFilterResultByTurnOver("FilterResult20W", 200000, 1000000);
         if (!result) {
@@ -514,9 +512,9 @@ int deleteRows(std::list<std::string>& targetRows) {
 
 int main() {
    std::string fileName(EXAMPLE_XLS_NAME);
-   updateOriginDBs("details", NUM_THREAD);
+   //updateOriginDBs("details", NUM_THREAD);
    //updateFilterResults("dbs", NUM_THREAD);
-   //getBankerInChargingDB();
+   getBankerInChargingDB();
    //getSideWaysStock();
    //filterOriginDB();
    //getTP();
