@@ -5,6 +5,7 @@
 #include "ErrorDefines.h"
 #include "UtilsDefines.h"
 #include "DBFilter.h"
+#include "DBWrapper.h"
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -21,11 +22,24 @@ static std::list<double> sPre15Flowins;
 
 std::string Forecaster::mResultTableName = "FilterResult";
 
-Forecaster::Forecaster() {
+Forecaster::Forecaster(const std::string& aDBName)
+        : mDBName(aDBName)
+        , mFilterResultTableName("FilterResult20W") {
+    DBWrapper::openDB(aDBName, &mOriginDB);
 }
 
 Forecaster::~Forecaster() {
+    DBWrapper::closeDB(mDBName);
 }
+
+bool Forecaster::isDBFlySinceTheDay(const std::string& aDBName, const std::string& theDay) {
+    return false;
+}
+
+double Forecaster::howMuchDBFlyDuringTheDays(const std::string& aDBName, const DateRegion& theDays) {
+    return 0;
+}
+
 
 bool Forecaster::forecasteThroughTurnOver(const std::string& aDBName) {
     std::list<Forecaster::DateRegion> recommandBuyDateRegions;
@@ -52,11 +66,11 @@ bool Forecaster::getBuyDateRegionsContinueFlowin(const std::string& aDBName, std
     sqlite3_stmt* stmt = NULL;
     int intRet = -1;
 
-    targetColumns += DATE;
+    targetColumns += STRING_DATE;
     targetColumns += ",";
-    targetColumns += TURNOVER_FLOWIN_TEN_DAYS;
+    targetColumns += STRING_TURNOVER_FLOWIN_TEN_DAYS;
     targetColumns += ",";
-    targetColumns += TURNOVER_FLOWIN_ONE_DAY;
+    targetColumns += STRING_TURNOVER_FLOWIN_ONE_DAY;
     sql = SELECT_COLUMNS(mResultTableName, targetColumns);
 
     LOGD(LOGTAG, "sql:%s", sql.c_str());
@@ -122,11 +136,11 @@ bool Forecaster::getBuyDateRegionsContinueFlowinPri(const std::string& aDBName, 
     sqlite3_stmt* stmt = NULL;
     int intRet = -1;
 
-    targetColumns += DATE;
+    targetColumns += STRING_DATE;
     targetColumns += ",";
-    targetColumns += TURNOVER_FLOWIN_TEN_DAYS;
+    targetColumns += STRING_TURNOVER_FLOWIN_TEN_DAYS;
     targetColumns += ",";
-    targetColumns += TURNOVER_FLOWIN_ONE_DAY;
+    targetColumns += STRING_TURNOVER_FLOWIN_ONE_DAY;
     sql = SELECT_COLUMNS(mResultTableName, targetColumns);
 
     LOGD(LOGTAG, "sql:%s", sql.c_str());
@@ -237,19 +251,19 @@ bool Forecaster::getBuyDateRegionsContinueFlowinFFP(const std::string& aDBName, 
     sqlite3_stmt* stmt = NULL;
     int intRet = -1;
 
-    targetColumns += DATE;
+    targetColumns += STRING_DATE;
     targetColumns += ",";
-    targetColumns += TURNOVER_SALE;
+    targetColumns += STRING_TURNOVER_SALE;
     targetColumns += ",";
-    targetColumns += TURNOVER_BUY;
+    targetColumns += STRING_TURNOVER_BUY;
     targetColumns += ",";
-    targetColumns += TURNOVER_FLOWIN_ONE_DAY;
+    targetColumns += STRING_TURNOVER_FLOWIN_ONE_DAY;
     targetColumns += ",";
-    targetColumns += TURNOVER_FLOWIN_TEN_DAYS;
+    targetColumns += STRING_TURNOVER_FLOWIN_TEN_DAYS;
     targetColumns += ",";
-    targetColumns += BEGIN_PRICE;
+    targetColumns += STRING_BEGIN_PRICE;
     targetColumns += ",";
-    targetColumns += END_PRICE;
+    targetColumns += STRING_END_PRICE;
     sql = SELECT_COLUMNS(mResultTableName, targetColumns);
 
     LOGD(LOGTAG, "sql:%s", sql.c_str());
@@ -392,11 +406,11 @@ bool Forecaster::getHitRateOfBuying(const std::string& aDBName, std::list<Foreca
     sqlite3_stmt* stmt = NULL;
     int intRet = -1;
 
-    targetColumns += DATE;
+    targetColumns += STRING_DATE;
     targetColumns += ", ";
-    targetColumns += BEGIN_PRICE;
+    targetColumns += STRING_BEGIN_PRICE;
     targetColumns += ", ";
-    targetColumns += END_PRICE;
+    targetColumns += STRING_END_PRICE;
     sql = SELECT_COLUMNS(mResultTableName, targetColumns);
 
     LOGI(LOGTAG, "sql:%s", sql.c_str());

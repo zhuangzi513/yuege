@@ -1,23 +1,26 @@
-#define DATE                " Date "
-#define VOLUME              " Volume "
-#define TURNOVER            " TurnOver "
-#define TURNOVER_SALE       " TurnOverSale "
-#define TURNOVER_BUY        " TurnOverBuy "
-#define SALE_BUY            " SaleBuy "
-#define BEGIN_PRICE         " BeginPrice "
-#define END_PRICE           " EndPrice "
+#ifndef UTILS_DEFINS_H
+#define UTILS_DEFINS_H
 
-#define TURNOVER_FLOWIN_ONE_DAY  " TurnOverFlowInOneDay "
-#define VOLUME_FLOWIN_ONE_DAY    " VolumeFlowInOneDay "
+#define STRING_DATE                " Date "
+#define STRING_VOLUME              " Volume "
+#define STRING_TURNOVER            " TurnOver "
+#define STRING_TURNOVER_SALE       " TurnOverSale "
+#define STRING_TURNOVER_BUY        " TurnOverBuy "
+#define STRING_SALE_BUY            " SaleBuy "
+#define STRING_BEGIN_PRICE         " BeginPrice "
+#define STRING_END_PRICE           " EndPrice "
 
-#define TURNOVER_FLOWIN_FIVE_DAY " TurnOverFlowInFiveDays "
-#define VOLUME_FLOWIN_FIVE_DAY   " VolumeFlowInFiveDays "
+#define STRING_TURNOVER_FLOWIN_ONE_DAY  " TurnOverFlowInOneDay "
+#define STRING_VOLUME_FLOWIN_ONE_DAY    " VolumeFlowInOneDay "
 
-#define TURNOVER_FLOWIN_TEN_DAYS " TurnOverFlowInTenDays "
-#define VOLUME_FLOWIN_TEN_DAYS   " VolumeFlowInTenDays "
+#define STRING_TURNOVER_FLOWIN_FIVE_DAY " TurnOverFlowInFiveDays "
+#define STRING_VOLUME_FLOWIN_FIVE_DAY   " VolumeFlowInFiveDays "
 
-#define TURNOVER_FLOWIN_MON_DAYS " TurnOverFlowInMonDays "
-#define VOLUME_FLOWIN_MON_DAYS   " VolumeFlowInMonDays "
+#define STRING_TURNOVER_FLOWIN_TEN_DAYS " TurnOverFlowInTenDays "
+#define STRING_VOLUME_FLOWIN_TEN_DAYS   " VolumeFlowInTenDays "
+
+#define STRING_TURNOVER_FLOWIN_MON_DAYS " TurnOverFlowInMonDays "
+#define STRING_VOLUME_FLOWIN_MON_DAYS   " VolumeFlowInMonDays "
 
 
 static std::string SELECT_COLUMNS(const std::string& tableName, const std::string& targetColumns) {
@@ -41,7 +44,7 @@ static std::string SELECT_TURNOVER_INTO(const std::string& srcTable,
     command += " FROM ";
     command += srcTable;
     command += " WHERE ";
-    command += TURNOVER;
+    command += STRING_TURNOVER;
     command += " >= ";
     command += arg;
     return command;
@@ -115,3 +118,4 @@ static std::string GET_TABLES() {
     return command;
 }
 
+#endif

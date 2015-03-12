@@ -29,17 +29,7 @@
 class DBFilter {
   public:
     class BaseResultData;
-    //class DateRegion;
-    //class PriceRegion;
     friend class DBSearcher;
-
-/*
-    enum {
-      CONTINUE_FLOWIN,
-      CONTINUE_FLOWIN_PRI,
-      CONTINUE_FLOWIN_FROM_FIRST_POSITIVE
-    };
-*/
 
     DBFilter(const std::string& aDBName);
     ~DBFilter();
@@ -81,11 +71,6 @@ class DBFilter {
      * return true if successfully update the result-table in the origin-database
     */
     bool updateFilterResultByTurnOver(const std::string& aResultTableName, const int aMinTurnover, const int aMaxTurnOver);
-
-    //bool getHitRateOfBuying(const std::string& tableName, std::list<DateRegion>& recommandBuyRegions);
-
-    //static bool getGlobalHitRate(double& hitRate);
-    //bool getRecommandBuyDateRegions(const int throughWhat, const std::string& aDBName, std::list<DBFilter::DateRegion>& recommandBuyDateRegions);
 
   private:
     /*
@@ -312,43 +297,6 @@ class DBFilter {
         std::string mDate;
     };
 
-/*
-    class DateRegion {
-      public:
-        DateRegion()
-            : mStartDate("")
-            , mEndDate("") {
-        }
-
-        DateRegion(const DateRegion& dateRegion) {
-            mStartDate = dateRegion.mStartDate;
-            mEndDate   = dateRegion.mEndDate;
-        }
-
-      public:
-        std::string mStartDate;
-        std::string mEndDate;
-    };
-
-    class PriceRegion {
-      public:
-        PriceRegion()
-            : mBeginPrice(0.0)
-            , mEndPrice(0.0) {
-        }
-
-        PriceRegion(const PriceRegion& priceRegion) {
-            mBeginPrice = priceRegion.mBeginPrice;
-            mEndPrice   = priceRegion.mEndPrice;
-        }
-      
-      public:
-        double mBeginPrice;
-        double mEndPrice;
-    };
-*/
-
-
     /*
      * The filtered results used to fill the result-tables.  we should reset it before any filtering for a
      * result table. For example, before computing FilterResult20W, we should clear content stored in the
@@ -378,11 +326,6 @@ class DBFilter {
      * the new added origin-table(s) are computed/filtered and then saved into the result-tables.
     */
     std::list<std::string> mNewAddedTables;
-
-    ///*
-    // * XXX:Remove it later
-    //*/
-    //static std::string mResultTableName;
 
     /*
      * The names of result-tables, for now only 5 result tables for one origin-databse:
